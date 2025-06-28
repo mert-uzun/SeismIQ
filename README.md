@@ -71,93 +71,84 @@ In summary, this project aims to:
 
 ## **📂 Project Structure**
 
-earthquake-helper/
-│
-├── backend/ # AWS Lambda functions & APIs
-│ ├── lambda_functions/
-│ └── tweet_processor/
-│
-├── ml/ # Machine learning models & data pipelines
-│ ├── models/
-│ └── training/
-│
-├── mobile-app/ # Android app source
-│ ├── app/src/
-│ └── activities/
-│
-├── docs/ # Screenshots, diagrams, architecture
-│ └── system_architecture.md
-│
-└── README.md # Project documentation (this file)
----
+```bash
+seismiq/
+├── backend/                # AWS Lambda functions & APIs
+│   ├── lambda_functions/
+│   └── tweet_processor/
+├── ml/                     # Machine learning models & data pipelines
+│   ├── models/
+│   └── training/
+├── mobile-app/             # Android app source
+│   ├── app/src/
+│   └── activities/
+├── docs/                   # Screenshots, diagrams, architecture
+│   └── system_architecture.md
+└── README.md               # Project documentation (this file)
+```
 
-##** ⚙️ Getting Started**
----
+--
+## ⚙️ Getting Started
 
-### **Used Technologies**
+### Used Technologies
 
-- Java + Android Studio (for mobile app)
-- Python 3.9+ (for ML pipelines)
-- AWS CLI + credentials
-- Node.js (if using Serverless Framework)
+- Java + Android Studio (for mobile app)  
+- Python 3.9+ (for ML pipelines)  
+- AWS CLI + credentials  
+- Node.js (if using Serverless Framework)  
 - Firebase account (optional)
 
---
+---
 
-###**📱 Usage**
--*Submitting a Report:*
--Open the Android app.
+## 📱 Usage
 
--Tap on “+ Report Help / Resource”.
+### Submitting a Report
 
--*Choose your category:*
+1. Open the Android app  
+2. Tap on **“+ Report Help / Resource”**  
+3. Choose your category:
+   - **Need**: water, shelter, medical help  
+   - **Available**: food, crane, ambulance, etc.  
+4. Your location is auto-detected (or set manually)  
+5. Submit — the report appears on the shared map in real time
 
--Need: water, shelter, medical help
+### Visualizing Crowds & Tweets
 
--Available: food, crane, ambulance, etc.
+- Crowded areas are shown as red/orange heat zones  
+- Tweets matching emergency keywords like *"under rubble"*, *"need help"*, or *"no food"* are classified, geotagged, and visualized
 
--Your location is auto-detected (or set manually).
+---
 
--Submit and it appears on the shared map.
+## 🌐 API Endpoints
 
--*Visualizing Crowds & Tweets*
--Crowded areas are shown as red/orange heat zones.
+| Method | Endpoint         | Description                         |
+|--------|------------------|-------------------------------------|
+| GET    | `/api/reports`   | List all user-submitted reports     |
+| POST   | `/api/reports`   | Submit a new report                 |
+| GET    | `/api/heatmap`   | Get density and crowd data          |
+| GET    | `/api/tweets`    | Get analyzed emergency tweets       |
 
--Tweets matching keywords like "under rubble", "need help", or "no food" are classified and marked on the map.
---
+> 🔐 JWT or Firebase token required for protected endpoints
 
-###**🌐 API Endpoints**
--*Method	Endpoint	Description*
--GET	/api/reports	List all user-submitted reports
--POST	/api/reports	Submit a new report
--GET	/api/heatmap	Get density and crowd data
--GET	/api/tweets	Get analyzed emergency tweets
+---
 
--JWT or Firebase token required for protected endpoints.
+## 🧭 Roadmap
 
---
+-  Offline report submission with later syncing  
+-  Admin dashboard with stats and heatmaps  
+-  Volunteer matching system with proximity-based alerts  Multilingual NLP support (Turkish, Arabic, Kurdish)  
+-  Integration with AFAD, Red Crescent, NGOs
 
-###**🧭 Roadmap**
- -Offline report submission with later syncing
+---
 
- -Admin dashboard with stats and heatmaps
+## 📜 License
 
- -Volunteer matching system with proximity-based alerts
+This project is licensed under the **MIT License**.
 
- -Multilingual NLP support (Turkish, Arabic, Kurdish)
+---
 
- -Integration with AFAD, Red Crescent, NGOs
+## ❤️ Acknowledgments
 
- --
+Special thanks to the **AWS Student Engagement Program** and to all team members (Sıla Bozkurt, Mert Uzun, Berksu Tekkaya, Ayşe Ece Bilgi, who contributed to this project. SeismIQ is built with the belief that **rapid, decentralized, and citizen-powered disaster response** can save lives.
 
-###**📜 License**
--This project is licensed under the MIT License.
-
---
-
-###**❤️ Acknowledgments**
-Thanks to the AWS Student Engagement program, and all group members who inspired this project. The application is built out of a belief that rapid, decentralized, and citizen-powered disaster response can save lives.
-
---
-
-
+---
