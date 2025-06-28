@@ -89,8 +89,10 @@ earthquake-helper/
 │ └── system_architecture.md
 │
 └── README.md # Project documentation (this file)
+---
 
 ##** ⚙️ Getting Started**
+---
 
 ### **Used Technologies**
 
@@ -100,7 +102,7 @@ earthquake-helper/
 - Node.js (if using Serverless Framework)
 - Firebase account (optional)
 
-
+--
 
 ###**📱 Usage**
 -*Submitting a Report:*
@@ -122,6 +124,7 @@ earthquake-helper/
 -Crowded areas are shown as red/orange heat zones.
 
 -Tweets matching keywords like "under rubble", "need help", or "no food" are classified and marked on the map.
+--
 
 ###**🌐 API Endpoints**
 -*Method	Endpoint	Description*
@@ -132,6 +135,7 @@ earthquake-helper/
 
 -JWT or Firebase token required for protected endpoints.
 
+--
 
 ###**🧭 Roadmap**
  -Offline report submission with later syncing
@@ -144,10 +148,16 @@ earthquake-helper/
 
  -Integration with AFAD, Red Crescent, NGOs
 
+ --
+
 ###**📜 License**
 -This project is licensed under the MIT License.
 
+--
+
 ###**❤️ Acknowledgments**
 Thanks to the AWS Student Engagement program, and all group members who inspired this project. The application is built out of a belief that rapid, decentralized, and citizen-powered disaster response can save lives.
+
+--
 
 
