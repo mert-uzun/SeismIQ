@@ -149,6 +149,6 @@ This project is licensed under the **MIT License**.
 
 ## ❤️ Acknowledgments
 
-Special thanks to the **AWS Student Engagement Program** and to all team members (Sıla Bozkurt, Mert Uzun, Berksu Tekkaya, Ayşe Ece Bilgi, who contributed to this project. SeismIQ is built with the belief that **rapid, decentralized, and citizen-powered disaster response** can save lives.
+Special thanks to the **AWS Student Engagement Program** and to all team members (Sıla Bozkurt, Salih Mert Uzun, Berksu Tekkaya, Ayşe Ece Bilgi, who contributed to this project. SeismIQ is built with the belief that **rapid, decentralized, and citizen-powered disaster response** can save lives.
 
 ---
