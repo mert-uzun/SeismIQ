@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import tweepy
 import datetime
 import boto3
+import time
 
 load_dotenv()
 
@@ -51,13 +52,15 @@ def lambda_handler(event, context):
         created_at = tweet.created_at
         user = tweet.user.screen_name
         hashtags = [hashtag["text"] for hashtag in tweet.entities.get("hashtags", [])]
+        ten_years_from_now = int(time.time()) + 10 * 365 * 24 * 60 * 60
 
         tweets_table.put_item(Item={
             "tweet_id": tweet_id,
             "text": text,
             "created_at": str(created_at),
             "user": user,
-            "hashtags": hashtags
+            "hashtags": hashtags,
+            "ttl": ten_years_from_now # Delete the data after 10 years of its entry
         })
 
     # Update since_id

@@ -1,3 +1,7 @@
+# This script is used to scrape the tweets for the earthquake on Feb 6 2023.
+# It is used to generate the example data for the table.
+# NOTE: This script DOES NOT WORK with Python version 3.12 or greater due to snscrape's outdated system and lack of support for newer Python versions.
+
 import os
 from dotenv import load_dotenv
 import boto3
