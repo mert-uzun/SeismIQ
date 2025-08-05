@@ -1,0 +1,171 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SeismIQ Backend Services
+
+Resources:
+  # API Gateway
+  ServerlessRestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: SeismiqUserPool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: address
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: isVolunteer
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: isSocialWorker
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: CognitoUserPool
+      ClientName: SeismiqUserPoolClient
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # API Gateway Authorizer
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: CognitoUserPoolAuthorizer
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      RestApiId:  ServerlessRestApi
+      ProviderARNs:
+        - CognitoUserPool.Arn
+
+  UserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../user-service
+      Handler: com.seismiq.user.UserHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:  UsersTable
+      Events:
+        CreateUser:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: POST
+            Auth:
+              Authorizer: COGNITO_USER_POOLS
+              AuthorizerId:  CognitoAuthorizer
+        GetUser:
+          Type: Api
+          Properties:
+            Path: /users/{userId}
+            Method: GET
+            Auth:
+              Authorizer: COGNITO_USER_POOLS
+              AuthorizerId:  CognitoAuthorizer
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../report-service
+      Handler: com.seismiq.report.ReportHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:  ReportsTable
+      Events:
+        CreateReport:
+          Type: Api
+          Properties:
+            Path: /reports
+            Method: POST
+            Auth:
+              Authorizer: COGNITO_USER_POOLS
+              AuthorizerId: CognitoAuthorizer
+        GetReport:
+          Type: Api
+          Properties:
+            Path: /reports/{reportId}
+            Method: GET
+            Auth:
+              Authorizer: COGNITO_USER_POOLS
+              AuthorizerId: CognitoAuthorizer
+        GetUserReports:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/reports
+            Method: GET
+            Auth:
+              Authorizer: COGNITO_USER_POOLS
+              AuthorizerId: CognitoAuthorizer
+
+  # DynamoDB Tables remain the same
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Users
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Reports
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: reportId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reportId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserReportsIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  ApiURL:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value:  CognitoUserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value:  CognitoUserPoolClient

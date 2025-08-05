@@ -1,0 +1,3 @@
+com\seismiq\common\repository\DynamoDBRepository.class
+com\seismiq\common\model\Report.class
+com\seismiq\common\model\User.class
