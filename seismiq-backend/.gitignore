@@ -1,0 +1,37 @@
+# Maven build directories
+**/target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (if any)
+.env
+*.local
+
+# AWS SAM build artifacts (if applicable)
+.aws-sam/
+
+# Java class files
+*.class
+
+# Node modules (if using Node for frontend)
+node_modules/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# IDE-specific workspace files
+*.swp
+*.swo
