@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+venv311/
+env/
+ENV/
+.venv/
+.venv311/
+
+# Lambda dependencies
+lambda_deps/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# VSCode settings
+.vscode/
+
+# macOS and Windows system files
+.DS_Store
+Thumbs.db
+
+# Python egg and build files
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# dotenv environment files
+.env
+.env.*
+
+# Log files
+*.log
+
+# Local test output
+*.out
+
+# AWS credentials (never commit these!)
+.aws/
+
+# snscrape CLI temp files
+snscrape_locals_*
+
+# Compiled C extensions
+*.so
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+.pyre/
