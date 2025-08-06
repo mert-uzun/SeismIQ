@@ -6,7 +6,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.seismiq.common.model.Report;
+import com.seismiq.common.model.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             report.setReportId(UUID.randomUUID().toString());
             report.setTimestamp(LocalDateTime.now());
             if (report.getStatus() == null) {
-                report.setStatus("PENDING");
+                report.setStatus(Report.ReportStatus.PENDING);
             }
             
             reportRepository.saveReport(report);

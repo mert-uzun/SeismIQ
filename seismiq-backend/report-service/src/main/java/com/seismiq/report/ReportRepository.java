@@ -1,6 +1,7 @@
 package com.seismiq.report;
 
 import com.seismiq.common.model.Report;
+import com.seismiq.common.model.User;
 import com.seismiq.common.repository.DynamoDBRepository;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import java.time.LocalDateTime;
@@ -21,11 +22,41 @@ public class ReportRepository extends DynamoDBRepository {
     public void saveReport(Report report) {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("reportId", AttributeValue.builder().s(report.getReportId()).build());
-        item.put("userId", AttributeValue.builder().s(report.getUserId()).build());
-        item.put("description", AttributeValue.builder().s(report.getDescription()).build());
-        item.put("location", AttributeValue.builder().s(report.getLocation()).build());
-        item.put("status", AttributeValue.builder().s(report.getStatus()).build());
-        item.put("timestamp", AttributeValue.builder().s(report.getTimestamp().format(DATE_FORMATTER)).build());
+        
+        // Save user details as a nested map
+        Map<String, AttributeValue> userMap = new HashMap<>();
+        User user = report.getUser();
+        if (user != null) {
+            item.put("userId", AttributeValue.builder().s(user.getUserId()).build());
+            userMap.put("userId", AttributeValue.builder().s(user.getUserId()).build());
+            userMap.put("name", AttributeValue.builder().s(user.getName()).build());
+            if (user.getAddress() != null) {
+                userMap.put("address", AttributeValue.builder().s(user.getAddress()).build());
+            }
+            userMap.put("isVolunteer", AttributeValue.builder().bool(user.isVolunteer()).build());
+            userMap.put("isSocialWorker", AttributeValue.builder().bool(user.isSocialWorker()).build());
+            item.put("user", AttributeValue.builder().m(userMap).build());
+        }
+        
+        if (report.getCategory() != null) {
+            item.put("category", AttributeValue.builder().s(report.getCategory().name()).build());
+        }
+        if (report.getDescription() != null) {
+            item.put("description", AttributeValue.builder().s(report.getDescription()).build());
+        }
+        if (report.getLocation() != null) {
+            item.put("location", AttributeValue.builder().s(report.getLocation()).build());
+        }
+        item.put("isCurrentLocation", AttributeValue.builder().bool(report.isCurrentLocation()).build());
+        if (report.getStatus() != null) {
+            item.put("status", AttributeValue.builder().s(report.getStatus().name()).build());
+        }
+        if (report.getTimestamp() != null) {
+            item.put("timestamp", AttributeValue.builder().s(report.getTimestamp().format(DATE_FORMATTER)).build());
+        }
+        if (report.getLastUpdated() != null) {
+            item.put("lastUpdated", AttributeValue.builder().s(report.getLastUpdated().format(DATE_FORMATTER)).build());
+        }
         
         putItem(item);
     }
@@ -61,13 +92,32 @@ public class ReportRepository extends DynamoDBRepository {
     }
 
     private Report mapToReport(Map<String, AttributeValue> item) {
-        Report report = new Report();
-        report.setReportId(item.get("reportId").s());
-        report.setUserId(item.get("userId").s());
-        report.setDescription(item.get("description").s());
-        report.setLocation(item.get("location").s());
-        report.setStatus(item.get("status").s());
-        report.setTimestamp(LocalDateTime.parse(item.get("timestamp").s(), DATE_FORMATTER));
+        // Create a user from the nested map first
+        User user = null;
+        if (item.containsKey("user")) {
+            Map<String, AttributeValue> userMap = item.get("user").m();
+            user = new User();
+            user.setUserId(userMap.get("userId").s());
+            user.setName(userMap.get("name").s());
+            if (userMap.containsKey("address")) {
+                user.setAddress(userMap.get("address").s());
+            }
+            user.setVolunteer(userMap.get("isVolunteer").bool());
+            user.setSocialWorker(userMap.get("isSocialWorker").bool());
+        }
+
+        // Create the report with all required fields
+        Report report = new Report(
+            item.get("reportId").s(),
+            user,
+            item.containsKey("category") ? Report.ReportCategory.valueOf(item.get("category").s()) : null,
+            item.containsKey("description") ? item.get("description").s() : null,
+            item.containsKey("location") ? item.get("location").s() : null,
+            item.containsKey("isCurrentLocation") ? item.get("isCurrentLocation").bool() : false,
+            item.containsKey("status") ? Report.ReportStatus.valueOf(item.get("status").s()) : Report.ReportStatus.PENDING,
+            LocalDateTime.parse(item.get("timestamp").s(), DATE_FORMATTER)
+        );
+
         return report;
     }
 }
