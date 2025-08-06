@@ -73,6 +73,16 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!-- pick one: 3.12.1 (minimal) or the latest stable 3.14.0 -->
+                <version>3.14.0</version>
+                <configuration>
+                    <source>17</source>          <!-- or whatever you use -->
+                    <target>17</target>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
