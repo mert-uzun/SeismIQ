@@ -100,8 +100,18 @@ seismiq/
 
 ---
 
-## 📱 Usage
+## Set Up
 
+### Zemberek NLP
+
+1. Download the latest version of `zemberek-full.jar` from the official drive:  
+   [Zemberek Original Drive](https://drive.google.com/drive/u/0/folders/0B9TrB39LQKZWX1RSang3M1VkYjQ?resourcekey=0-uFoTlb0PoP0otWan6JkCLg)
+2. Place the downloaded `.jar` file into the following directory:  
+   `twitter/zemberek-full.jar` (relative to the project root)
+3. Ensure it is not tracked by Git by confirming `.gitignore` includes the correct entry.
+
+## 📱 Usage
+]
 ### Submitting a Report
 
 1. Open the Android app  
