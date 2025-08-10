@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets
 import tweepy
 import datetime
 import boto3
@@ -46,6 +47,8 @@ def lambda_handler(event, context):
         )
         
     # Process and store tweets
+    tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
+
     for tweet in tweets:
         tweet_id = tweet.id_str
         text = tweet.full_text
@@ -57,11 +60,14 @@ def lambda_handler(event, context):
         tweets_table.put_item(Item={
             "tweet_id": tweet_id,
             "text": text,
+            "processed_data": preprocess_tweet(text),
             "created_at": str(created_at),
             "user": user,
             "hashtags": hashtags,
             "ttl": ten_years_from_now # Delete the data after 10 years of its entry
         })
+
+        realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)
 
     # Update since_id
     if tweets:
@@ -69,13 +75,23 @@ def lambda_handler(event, context):
 
     return {"statusCode": 200, "body": "Success"}
 
-def get_last_seen_id(table: boto3.resource.Table) -> str:
+def get_last_seen_id(table: boto3.resource("dynamodb").Table) -> str:
     response = table.get_item(Key={"tracker_id": "since_id"})
     last_seen_id = response.get("Item", {}).get("value")
     return str(last_seen_id) if last_seen_id else None
 
-def update_last_seen_id(table: boto3.resource.Table, value: str):
+def update_last_seen_id(table: boto3.resource("dynamodb").Table, value: str):
     table.put_item(Item={"tracker_id": "since_id", "value": value})
+
+def get_hashtags(text: str) -> list[str]:
+    hashtag_indices = [i for i, char in enumerate(text) if char == '#']
+    hashtags = []
+
+    for i in hashtag_indices:
+        space_index = text.find(" ", i)
+        if space_index == -1:
+            hashtags.append(text[i:])
+        else:
+            hashtags.append(text[i:space_index])
     
-
-
+    return hashtags
