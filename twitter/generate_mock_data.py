@@ -3,6 +3,7 @@ import os
 import random
 import datetime
 from dotenv import load_dotenv
+from tweet_preprocessing import batch_fit_and_write_tfidf
 
 load_dotenv()
 
@@ -539,3 +540,7 @@ def generate_categorized_data(quantity: int, table: boto3.resource("dynamodb").T
     print("done")
 
 generate_categorized_data(10000, mock_data_table) # UNCOMMENT THIS TO GENERATE CATEGORIZED MOCK DATA
+
+# Train the tfidf model on the mock data
+tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
+batch_fit_and_write_tfidf(mock_data_table, tfidf_table)

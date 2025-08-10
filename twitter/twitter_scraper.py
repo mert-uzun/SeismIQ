@@ -1,6 +1,7 @@
 import os
 
 from dotenv import load_dotenv
+from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets
 import tweepy
 import datetime
 import boto3
@@ -46,6 +47,8 @@ def lambda_handler(event, context):
         )
         
     # Process and store tweets
+    tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
+
     for tweet in tweets:
         tweet_id = tweet.id_str
         text = tweet.full_text
@@ -57,11 +60,14 @@ def lambda_handler(event, context):
         tweets_table.put_item(Item={
             "tweet_id": tweet_id,
             "text": text,
+            "processed_data": preprocess_tweet(text),
             "created_at": str(created_at),
             "user": user,
             "hashtags": hashtags,
             "ttl": ten_years_from_now # Delete the data after 10 years of its entry
         })
+
+        realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)
 
     # Update since_id
     if tweets:
@@ -89,11 +95,3 @@ def get_hashtags(text: str) -> list[str]:
             hashtags.append(text[i:space_index])
     
     return hashtags
-
-
-
-
-
-    
-
-

@@ -1,16 +1,18 @@
 import re
 import string
-from twitter_scraper import get_hashtags
 import jpype
+import boto3
+from twitter_scraper import get_hashtags
 import jpype.imports
 from jpype.types import JString
 import spacy
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # =============================== CLEANING =============================== #
 def remove_mentions(text: str) -> str:
     return re.sub(r"@\w+", "", text)
-    
+
 def remove_urls(text: str) -> str:
     return re.sub(r"http[s]?://\S+", "", text)
 
@@ -118,10 +120,136 @@ def spacy_ner(text: str) -> list[str]:
     doc = nlp(text)
     return [(ent.text, ent.label_) for ent in doc.ents]
 
+# =============================== PIPELINE =============================== #
+def preprocess_tweet(tweet_raw_content: str) -> dict:
+    clean_text = clean_tweet(tweet_raw_content)
+    lemmatized = lemmatize(clean_text)
+    stopwords_removed = remove_stopwods(lemmatized)
+    tokens = tokenize(stopwords_removed)
+    locations_ner = extract_locations(remove_stopwods(clean_text))
+    features = handcrafted_features(clean_text, tokens)
+
+    return {
+        "clean_text": clean_text,
+        "lemmatized": lemmatized,
+        "stopwords_removed": stopwords_removed,
+        "tokens": tokens,
+        "locations_ner": locations_ner,
+        "features": features,
+        "raw_content": tweet_raw_content
+    }
+
 # ========================== FEATURE EXTRACTION ========================== #
 
 # TF-IDF
-#TODO
+def save_tfidf_model(model_table, model_id, vectorizer):
+    model_table.put_item(Item={
+        "model_id": model_id,
+        "vocabulary": dict(vectorizer.vocabulary_),
+        "idf_weights": [str(float(weight)) for weight in vectorizer.idf_],
+        "ngram_range": vectorizer.ngram_range
+    })
+
+def load_tfidf_model(model_table, model_id):
+    response = model_table.get_item(Key={"model_id": model_id})
+    item = response.get("Item", {})
+
+    if not item:
+        raise Exception(f"Model with ID {model_id} not found")
+    
+    vectorizer = TfidfVectorizer(ngram_range=item["ngram_range"])
+    vectorizer.vocabulary_ = {k: int(v) for k, v in item["vocabulary"].items()}
+    vectorizer.idf_ = np.array([float(weight) for weight in item["idf_weights"]])
+
+    return vectorizer
+
+def _get_clean_text(item: dict) -> str:
+    if "stopwords_removed" in item:
+        return item["stopwords_removed"]
+
+    return preprocess_tweet(item.get("text", "")).get("stopwords_removed", "")
+
+def _get_top_k_tfidf(tfidf_row, feature_names, top_k):
+    if tfidf_row.nnz == 0:
+        return {}
+
+    coo = tfidf_row.tocoo()
+
+    term_scores = [(i, score) for i, score in zip(coo.col, coo.data)]
+    term_scores.sort(key=lambda x: x[1],reverse=True)
+
+    return {feature_names[i]: score for (i, score) in term_scores[:top_k]}
+
+def batch_fit_and_write_tfidf(source_table: boto3.dynamodb.Table, model_table: boto3.dynamodb.Table):
+    # 1. Read all tweets from DynamoDB
+    response = source_table.scan()
+    tweets = response.get("Items", [])
+
+    # 2. Extract text and preprocess
+    clean_contents = []
+    for tweet in tweets:
+        if "processed_data" in tweet:
+            clean_content = tweet.get("processed_data", {}).get("stopwords_removed", "")
+        else:
+            clean_content = preprocess_tweet(tweet.get("text", "")).get("stopwords_removed", "")
+        
+        if clean_content.strip():
+            clean_contents.append(clean_content)
+
+    # 3. Fit TF-IDF model on all texts
+    vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+    tfidf_matrix = vectorizer.fit_transform(clean_contents)
+    words_in_tweets = vectorizer.get_feature_names_out()
+
+    # 4. Save model to model_table
+    save_tfidf_model(model_table, "tfidf_model", vectorizer)
+
+    # 5. Calculate TF-IDF for each tweet
+    for i in range(tfidf_matrix.shape[0]):
+        top_k_terms = _get_top_k_tfidf(tfidf_matrix[i], words_in_tweets, 15)
+        tweet_id = tweets[i].get("tweet_id", "")
+        if tweet_id:
+            source_table.update_item(
+                Key={"tweet_id": tweet_id},
+                UpdateExpression="SET tfidf_terms = :tfidf_terms",
+                ExpressionAttributeValues={":tfidf_terms": top_k_terms}
+            )
+        
+    return {
+        "status": "success",
+        "exit_code": 0
+    }
+
+def realtime_tfidf_for_new_tweets(source_table: boto3.dynamodb.Table, model_table: boto3.dynamodb.Table, new_tweet_id: str, top_k: int):
+    try:    
+        # 1. Load saved model
+        vectorizer = load_tfidf_model(model_table, "tfidf_model")
+        # 2. Get new tweet from DynamoDB
+        response = source_table.get_item(Key={"tweet_id": new_tweet_id})
+        # 3. Preprocess tweet text
+        clean_content = response.get("Item", {}).get("processed_data", {}).get("stopwords_removed", "")
+        # 4. Calculate TF-IDF using saved model
+        tfidf_row = vectorizer.transform([clean_content])
+        # 5. Write top-K scores back to new tweet
+        top_k_terms = _get_top_k_tfidf(tfidf_row[0,:], vectorizer.get_feature_names_out(), top_k)
+
+        source_table.update_item(
+            Key={"tweet_id": new_tweet_id},
+            UpdateExpression="SET tfidf_terms = :tfidf_terms",
+            ExpressionAttributeValues={":tfidf_terms": top_k_terms}
+        )
+
+        return {
+            "status": "success",
+            "exit_code": 0
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "exit_code": 1
+        }
+
 # NER via SpaCy
 def extract_locations(text: str) -> list[str]:
     doc = nlp(text)
@@ -132,7 +260,6 @@ def detect_negation_lemma(cleaned_text: str) -> bool:
     analysis = morphology.analyzeSentence(JString(cleaned_text))
     
     return any("Neg" in s.getMorphemes() for s in analysis)
-
     
 # Handcrafted Features
 need_keywords = [
@@ -158,9 +285,7 @@ situation_keywords = [
 ]
 
 negative_keywords = [
-    "yok", "hiç", "yoktan", "bitmek", "tükenmek", "kesilmek", "kapanmak",
-    "değil"
-]
+    "yok", "hiç", "yoktan", "bitmek", "tükenmek", "kesilmek", "kapanmak", "değil"]
 
 location_indicators = ["bura", "şura", "ora", "yakın", "civar", "bölge", "burada", "burda", "şurada", "orada", "yakında", "civarda", "bölgede"]
 
@@ -217,23 +342,3 @@ def handcrafted_features(clean_text: str, tokens: list[str]) -> dict:
         features["is_need"] = 0.8 if features["is_need"] == 0 else 1
 
     return features
-
-# =============================== PIPELINE =============================== #
-def preprocess_tweet(tweet_raw_content: str) -> dict:
-    clean_text = clean_tweet(tweet_raw_content)
-    lemmatized = lemmatize(clean_text)
-    stopwords_removed = remove_stopwods(lemmatized)
-    tokens = tokenize(stopwords_removed)
-    locations_ner = extract_locations(remove_stopwods(clean_text))
-    features = handcrafted_features(clean_text, tokens)
-
-    return {
-        "clean_text": clean_text,
-        "lemmatized": lemmatized,
-        "stopwords_removed": stopwords_removed,
-        "tokens": tokens,
-        "locations_ner": locations_ner,
-        "features": features
-    }
-
-
