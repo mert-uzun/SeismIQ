@@ -1,10 +1,10 @@
 # PowerShell script to deploy lambda functions to AWS
-# Run .\deploy_lambda.ps1 to run the script and deploy the lambda function to AWS
+# Run .\twitter\deploy_lambda.ps1 to run the script and deploy the lambda function to AWS
 
 $lambda_function_name = "tweet_scraper_for_seismiq"
-$main_script = "twitter_scraper.py"
-$deploy_dir = "lambda_deps"
-$zip_file = "lambda_deps\lambda_deploy.zip"
+$main_script = "twitter\twitter_scraper.py"
+$deploy_dir = "twitter\lambda_deps"
+$zip_file = "twitter\lambda_deps\lambda_deploy.zip"
 
 try {
     pip install -r requirements.txt -t $deploy_dir
