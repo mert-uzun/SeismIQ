@@ -1,5 +1,12 @@
 package com.seismiq.common.model;
 
+/**
+ * Represents a user in the SeismIQ system.
+ * Users can be regular citizens, volunteers, or social workers
+ * who interact with the system for earthquake response and assistance.
+ *
+ * @author Sıla Bozkurt
+ */
 public class User {
     private String userId;
     private String name;

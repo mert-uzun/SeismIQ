@@ -5,6 +5,13 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import java.util.Map;
 
+/**
+ * Base repository class for DynamoDB operations.
+ * Provides common functionality for interacting with DynamoDB tables
+ * in the SeismIQ system.
+ *
+ * @author Sıla Bozkurt
+ */
 public abstract class DynamoDBRepository {
     protected final DynamoDbClient dynamoDbClient;
     protected final String tableName;

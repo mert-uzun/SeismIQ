@@ -7,6 +7,12 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.Gson;
 import com.seismiq.common.model.User;
 
+/**
+ * AWS Lambda handler for processing user-related API requests.
+ * Manages user registration, updates, and retrieval in the SeismIQ system.
+ *
+ * @author Sıla Bozkurt
+ */
 public class UserHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private final UserRepository userRepository;
     private final Gson gson;

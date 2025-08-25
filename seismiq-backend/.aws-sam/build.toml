@@ -18,4 +18,13 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["ReportFunction"]
 
+[function_build_definitions.3390461f-9fdc-4400-b7e4-b0e83535c7d3]
+codeuri = "C:\\Users\\Sýla\\Documents\\GitHub\\SeismIQ\\seismiq-backend\\earthquake-service"
+runtime = "java21"
+architecture = "x86_64"
+handler = "com.seismiq.earthquake.EarthquakeHandler::handleRequest"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["EarthquakeFunction"]
+
 [layer_build_definitions]

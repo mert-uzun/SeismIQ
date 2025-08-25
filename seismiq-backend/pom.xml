@@ -13,6 +13,7 @@
         <module>common-lib</module>
         <module>user-service</module>
         <module>report-service</module>
+        <module>earthquake-service</module>
     </modules>
 
     <properties>

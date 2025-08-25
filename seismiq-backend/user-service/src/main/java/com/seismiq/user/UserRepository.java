@@ -6,6 +6,12 @@ import software.amazon.awssdk.services.dynamodb.model.*;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Repository class for managing user data in DynamoDB.
+ * Handles CRUD operations for user records in the SeismIQ system.
+ *
+ * @author Sıla Bozkurt
+ */
 public class UserRepository extends DynamoDBRepository {
     private static final String USERS_TABLE = "Users";
 
