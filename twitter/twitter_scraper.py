@@ -75,12 +75,12 @@ def lambda_handler(event, context):
 
     return {"statusCode": 200, "body": "Success"}
 
-def get_last_seen_id(table: boto3.resource("dynamodb").Table) -> str:
+def get_last_seen_id(table) -> str:
     response = table.get_item(Key={"tracker_id": "since_id"})
     last_seen_id = response.get("Item", {}).get("value")
     return str(last_seen_id) if last_seen_id else None
 
-def update_last_seen_id(table: boto3.resource("dynamodb").Table, value: str):
+def update_last_seen_id(table, value: str):
     table.put_item(Item={"tracker_id": "since_id", "value": value})
 
 def get_hashtags(text: str) -> list[str]:

@@ -63,7 +63,7 @@ def clean_tweet(text: str) -> str:
     return text
 
 # ============================= LEMMATIZATION ============================= #
-ZEMBEREK_PATH = "twitter/zemberek-full.jar"
+ZEMBEREK_PATH = "/opt/zemberek-full.jar"
 
 # Start the JVM if it's not already started
 if not jpype.isJVMStarted():
@@ -180,7 +180,7 @@ def _get_top_k_tfidf(tfidf_row, feature_names, top_k):
 
     return {feature_names[i]: score for (i, score) in term_scores[:top_k]}
 
-def batch_fit_and_write_tfidf(source_table: boto3.dynamodb.Table, model_table: boto3.dynamodb.Table):
+def batch_fit_and_write_tfidf(source_table, model_table):
     # 1. Read all tweets from DynamoDB
     response = source_table.scan()
     tweets = response.get("Items", [])
@@ -220,7 +220,7 @@ def batch_fit_and_write_tfidf(source_table: boto3.dynamodb.Table, model_table: b
         "exit_code": 0
     }
 
-def realtime_tfidf_for_new_tweets(source_table: boto3.dynamodb.Table, model_table: boto3.dynamodb.Table, new_tweet_id: str, top_k: int):
+def realtime_tfidf_for_new_tweets(source_table, model_table, new_tweet_id: str, top_k: int):
     try:    
         # 1. Load saved model
         vectorizer = load_tfidf_model(model_table, "tfidf_model")
@@ -342,3 +342,5 @@ def handcrafted_features(clean_text: str, tokens: list[str]) -> dict:
         features["is_need"] = 0.8 if features["is_need"] == 0 else 1
 
     return features
+
+# --------------------- GPT ----------------------- #
