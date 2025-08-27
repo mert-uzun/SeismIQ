@@ -8,8 +8,18 @@ from jpype.types import JString
 import spacy
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
+from Tweet_preprocessingv2 import collapse_elongations, word_count_filter
 
 # =============================== CLEANING =============================== #
+banned_keywords = [
+    "suriyeli", "allah aşk", "allah ra", "allah yar", "allahtan",
+    "uygulama", "vpn", "tl", "iban", "dolar", "euro",
+    "rabbim", "ücretsiz", "ucretsiz", "hz", "orospu",
+    "neredeyim", "büyüklü", "vur emr", "şükür", "şifalar",
+    "maddi destek", "şiddet", "allah ım", "geçmiş olsun", "allahım", "inşallah"
+    "turkcell","vodafone","turk telekom","turktelekom","allahim"
+]
+
 def remove_mentions(text: str) -> str:
     return re.sub(r"@\w+", "", text)
 
@@ -33,13 +43,18 @@ def remove_emojis(text: str) -> str:
     return emoji_pattern.sub("", text)
 
 def remove_hastags(text: str) -> str:
+
+
     hashtags = get_hashtags(text)
     for hashtag in hashtags:
         text = text.replace(hashtag, "")
 
     return text
 
-def normalize_case(text: str) -> str:
+def keep_alphanumeric_and_turkish(text: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ\s]", "", text)
+
+def lower_case(text: str) -> str:
     return text.lower()
 
 def clean_whitespace(text: str) -> str:
@@ -49,18 +64,32 @@ def clean_whitespace(text: str) -> str:
 def remove_punctuation(text: str) -> str:
     return "".join(char for char in text if char not in string.punctuation)
 
-def clean_tweet(text: str) -> str:
+def clean_tweet(text: str, min_words: int = 3) -> str:
     if not text or not isinstance(text, str):
         return ""
 
     text = remove_mentions(text)
     text = remove_urls(text)
-    text = remove_emojis(text)
     text = remove_hastags(text)
-    text = normalize_case(text)
+    text = keep_alphanumeric_and_turkish(text)
+    text = remove_emojis(text)
+    text = lower_case(text)
     text = clean_whitespace(text)
+    text = drop_banned_words(text)
+    text = collapse_elongations(text, max_run=2)
+    text = word_count_filter(text, min_words=min_words)
 
     return text
+
+def drop_banned_words(text: str):
+    if banned_keywords is None:
+        return text
+    try:
+        if any(word in banned_keywords for word in text.split("")):
+            return ""
+        return text
+    except Exception:
+        return text
 
 # ============================= LEMMATIZATION ============================= #
 ZEMBEREK_PATH = "/opt/zemberek-full.jar"
@@ -70,17 +99,40 @@ if not jpype.isJVMStarted():
     jpype.startJVM(classpath=[ZEMBEREK_PATH])
 
 # Import TurkishMorphology from zemberek-full.jar after starting the JVM, this will cause a linter warning but it's fine
-from zemberek.morphology.TurkishMorphology import TurkishMorphology # type: ignore
+try:
+    from zemberek.morphology import TurkishMorphology # type: ignore
+    morphology = TurkishMorphology.createWithDefaults()
+except Exception:
+    morphology = None
 
-morphology = TurkishMorphology.createWithDefaults()
+try:
+    from zemberek.normalization import NoisyTextNormalizer # type: ignore
+    normalizer = NoisyTextNormalizer()
+except Exception:
+    normalizer = None
+
+def normalize_text(text: str) -> str:
+    if normalizer is None:
+        return text
+    try:
+        return normalizer.normalize(text)
+    except Exception:
+        return text
 
 def lemmatize(text: str) -> str:
+    if morphology is None:
+        return text
+    
     results = []
 
     for word in text.split(" "):
-        analysis = morphology.analyzeSentence(JString(word))
-        lemmas = [str(s.getLemmas()[0]) for s in analysis]
-        results.append(lemmas[0] if lemmas else word)
+        try:
+            analysis = morphology.analyzeSentence(JString(word))
+            lemmas = [str(s.getLemmas()[0]) for s in analysis]
+            results.append(lemmas[0] if lemmas else word)
+        except Exception:
+            results.append(word)
+    
     
     return " ".join(results)
 
@@ -123,10 +175,11 @@ def spacy_ner(text: str) -> list[str]:
 # =============================== PIPELINE =============================== #
 def preprocess_tweet(tweet_raw_content: str) -> dict:
     clean_text = clean_tweet(tweet_raw_content)
-    lemmatized = lemmatize(clean_text)
+    normalized = normalize_text(clean_text)
+    lemmatized = lemmatize(normalized)
     stopwords_removed = remove_stopwods(lemmatized)
-    tokens = tokenize(stopwords_removed)
-    locations_ner = extract_locations(remove_stopwods(clean_text))
+    tokens = tokenize(stopwords_removed)    
+    locations_ner = extract_locations(stopwords_removed)
     features = handcrafted_features(clean_text, tokens)
 
     return {
