@@ -397,3 +397,35 @@ def handcrafted_features(clean_text: str, tokens: list[str]) -> dict:
     return features
 
 # --------------------- GPT ----------------------- #
+
+import json, os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+def extract_features_with_gpt(text: str) -> dict:
+    prompt = """
+        Analyze this Turkish tweet for earthquake disaster response. Extract emergency-related features and return ONLY a JSON object with these fields, without any explanations:
+
+        {
+        "emergency_type": one of ["medical_aid", "supply", "shelter", "rescue", "transport", "none"],
+        "urgency_level": one of ["very_high", "high", "medium", "low"],
+        "need_type": one of ["need_help", "offering_help", "information", "none"],
+        "location_mentioned": boolean,
+        "location_names": array of location names mentioned,
+        "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+        "resource_type": array of mentioned resources,
+        "victim_count": one of ["one", "few", "many", "unknown", "none"],
+        "time_sensitivity": one of ["immediate", "hours", "days", "none"],
+        "contact_info_present": boolean,
+        "contact_info": identify if present
+        "infrastructure_damage": boolean,
+        "medical_emergency": boolean,
+        "trapped_people": boolean,
+        "supply_shortage": boolean,
+        "communication_need": boolean
+        }
+
+        Tweet: "{tweet_text}"
+    """
+    
