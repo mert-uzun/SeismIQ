@@ -29,17 +29,17 @@ def lambda_handler(event, context):
 
     if(last_seen_id is None): # use time filter
         tweets = api.search_tweets(
-            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet",
+            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media",
             count=100,
             tweet_mode="extended",
-            result_type="recent"
+            result_type="recent",
         )
 
         # filter by time last 30 minutes because this is the first search
         tweets = [tweet for tweet in tweets if tweet.created_at > datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=30)]
     else: # use since_id
         tweets = api.search_tweets(
-            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet",
+            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media",
             since_id=last_seen_id,
             count=100,
             tweet_mode="extended",
@@ -82,16 +82,3 @@ def get_last_seen_id(table) -> str:
 
 def update_last_seen_id(table, value: str):
     table.put_item(Item={"tracker_id": "since_id", "value": value})
-
-def get_hashtags(text: str) -> list[str]:
-    hashtag_indices = [i for i, char in enumerate(text) if char == '#']
-    hashtags = []
-
-    for i in hashtag_indices:
-        space_index = text.find(" ", i)
-        if space_index == -1:
-            hashtags.append(text[i:])
-        else:
-            hashtags.append(text[i:space_index])
-    
-    return hashtags

@@ -2,7 +2,6 @@ import re
 import string
 import jpype
 import boto3
-from twitter_scraper import get_hashtags
 import jpype.imports
 from jpype.types import JString
 import spacy
@@ -42,9 +41,20 @@ def remove_emojis(text: str) -> str:
 
     return emoji_pattern.sub("", text)
 
+def get_hashtags(text: str) -> list[str]:
+    hashtag_indices = [i for i, char in enumerate(text) if char == '#']
+    hashtags = []
+
+    for i in hashtag_indices:
+        space_index = text.find(" ", i)
+        if space_index == -1:
+            hashtags.append(text[i:])
+        else:
+            hashtags.append(text[i:space_index])
+    
+    return hashtags
+
 def remove_hastags(text: str) -> str:
-
-
     hashtags = get_hashtags(text)
     for hashtag in hashtags:
         text = text.replace(hashtag, "")
@@ -92,7 +102,7 @@ def drop_banned_words(text: str):
         return text
 
 # ============================= LEMMATIZATION ============================= #
-ZEMBEREK_PATH = "/opt/zemberek-full.jar"
+ZEMBEREK_PATH = "twitter/zemberek-full.jar"
 
 # Start the JVM if it's not already started
 if not jpype.isJVMStarted():
@@ -400,32 +410,152 @@ def handcrafted_features(clean_text: str, tokens: list[str]) -> dict:
 
 import json, os
 from openai import OpenAI
+from dotenv import load_dotenv
 
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+load_dotenv()
 
-def extract_features_with_gpt(text: str) -> dict:
-    prompt = """
-        Analyze this Turkish tweet for earthquake disaster response. Extract emergency-related features and return ONLY a JSON object with these fields, without any explanations:
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        {
-        "emergency_type": one of ["medical_aid", "supply", "shelter", "rescue", "transport", "none"],
-        "urgency_level": one of ["very_high", "high", "medium", "low"],
-        "need_type": one of ["need_help", "offering_help", "information", "none"],
-        "location_mentioned": boolean,
-        "location_names": array of location names mentioned,
-        "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
-        "resource_type": array of mentioned resources,
-        "victim_count": one of ["one", "few", "many", "unknown", "none"],
-        "time_sensitivity": one of ["immediate", "hours", "days", "none"],
-        "contact_info_present": boolean,
-        "contact_info": identify if present
-        "infrastructure_damage": boolean,
-        "medical_emergency": boolean,
-        "trapped_people": boolean,
-        "supply_shortage": boolean,
-        "communication_need": boolean
-        }
+def extract_features_with_gpt(tweet_text: str) -> dict:
 
-        Tweet: "{tweet_text}"
-    """
+    if check_location_via_spacy(tweet_text):
+        prompt = """
+            Analyze this Turkish tweet for earthquake disaster response. Extract emergency-related features and return ONLY a JSON object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
+
+            {
+            "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
+            "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
+            "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
+            "location": city/district/neighborhood/address if present; else null,
+            "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
+            "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+            "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
+            "contact_info_present": boolean,
+            "contact_info": identify if present, else null
+            }
+
+            Tweet: "{tweet_text}"
+        """
+
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        content = resp.choices[0].message.content
+
+        try:
+            data = json.loads(content)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            print(Exception, content)
+        return {}
+    else:
+        return {} # if location is not mentioned, return empty dict (skip the tweet)
+
+def check_location_via_spacy(text: str) -> list[str]:
+    doc = nlp(text)
+    return [ent.text for ent in doc.ents if ent.label_ == "LOC"]
+
+def main():
+    test_tweets = [
+    # RESCUE CALLS - Life threatening
+    "YARDIM! Fatih mahallesi 5. sokak no:17'de enkazın altında kaldık. 3 kişiyiz, ses veriyoruz. ACIL YARDIM!",
+    "Beşiktaş'ta bina çöktü, annem ve babam enkaz altında. Lütfen yardım edin, çok acil durum var!",
+    "Kadıköy Moda'da apartman yıkıldı, alt katta mahsur kaldık. Nefes almakta zorlanıyoruz. IMDAT!",
+    "Bahçelievler'de kardeşim enkaz altında sıkıştı, ambulans lazım acilen. Kanıyor!",
+    "Zeytinburnu'nda 4 katlı bina çöktü, 2. katta mahsur kalan var. Vinç ve arama kurtarma ekibi gerekli!",
     
+    # MEDICAL EMERGENCIES
+    "Üsküdar'da yaralı var, bacağı kırık. Ambulans çağırdık ama gelmiyor, özel araçla hastaneye götürürük mü?",
+    "Pregnant kadın doğum yapıyor, doktor lazım acil! Şişli Mecidiyeköy'deyiz.",
+    "Kalp krizi geçiren yaşlı adam var, CPR yapıyoruz. Etiler'de ambulans bekiyoruz!",
+    "Çocuk başından yaralı, çok kan kaybediyor. Beyoğlu'ndan en yakın hastane hangisi?",
+    "Diyaliz hastası ilaçları kalmadı, nefroloji uzmanı arıyoruz. Yardım!",
+    
+    # SUPPLY CALLS - Food/Water/Shelter
+    "3 gündür su yok, çocuklar susuz kaldı. Sultangazi'de 200 hane su bekliyor.",
+    "Ekmek bulamıyoruz, market yıkıldı. Küçükçekmece'de 50 aile açlık sınırında.",
+    "Çadır lazım acil, soğukta kalıyoruz. Avcılar sahilde 30 aile barınak arıyor.",
+    "Bebek maması bitti, 8 aylık bebeğim var. Bağcılar'da kimse yardım etmiyor.",
+    "Battaniye ve sıcak yemek lazım. Kartal'da yaşlı ve hasta insanlar donuyor.",
+    "İlaç bulamıyoruz, eczane kapalı. Tansiyon ilacı olan var mı? Maltepe'deyiz.",
+    
+    # DANGER NOTICES
+    "DİKKAT! Taksim'de doğalgaz sızıntısı var, yaklaşmayın!",
+    "Karaköy'de elektrik kabloları kopuk, elektrik çarpma tehlikesi!",
+    "Galata Köprüsü'nde çatlak var, geçmeyin tehlikeli!",
+    "Maslak'ta su borusu patladı, yol göçme riski altında!",
+    "Sarıyer'de toprak kayması var, evleri boşaltın!",
+    
+    # INFORMATION SHARING
+    "Ataşehir'de elektrik geldi, şarj edebilirsiniz.",
+    "Beykoz'da su dağıtımı başladı, okul bahçesinde.",
+    "Pendik'te ücretsiz yemek dağıtılıyor, belediye binasında.",
+    "Tuzla'da geçici barınma merkezi açıldı, spor salonunda.",
+    "Kadıköy'de ücretsiz telefon hattı kuruldu, jandarma karakolunda.",
+    
+    # OFFERING HELP
+    "Araçla hasta taşıyabilirim, Anadolu yakasındayım. WhatsApp: 0532xxx",
+    "Evimde 10 kişi kalabilir, Nişantaşı'ndayım. Temiz su ve yemek var.",
+    "Doktorum, evde müdahale edebilirim. Beşiktaş civarı.",
+    "Vinç operatörüyüm, gönüllü çalışmaya hazırım. İletişim: 0505xxx",
+    "Psikolog olarak ücretsiz destek veriyorum. Online görüşme yapabiliriz.",
+    
+    # MIXED SITUATIONS
+    "Esenler'de su var ama elektrik yok, jeneratör lazım!",
+    "Çapa'da hastane çalışıyor ama ambulans yok, hasta taşıyamıyoruz.",
+    "Fatih'te ekmek var ama dağıtım sorunu var, araç lazım.",
+    "Bakırköy'de doktor var ama ilaç yok, eczacı arıyoruz.",
+    
+    # INFRASTRUCTURE PROBLEMS
+    "Köprü çöktü, Avrupa yakasına geçemiyoruz. Alternatif yol var mı?",
+    "Metro çalışmıyor, toplu taşıma problemi büyük.",
+    "Havaalanı kapalı, hasta nakli için helikopter gerekli.",
+    "Ana yol çöktü, ambulans geçemiyor. Alternatif güzergah lazım.",
+    
+    # EMOTIONAL/DESPERATE
+    "Annem kayıp, son kez Şişli'de görüldü. Lütfen bilgisi olan yazsın.",
+    "Evim yıkıldı, hiçbir şeyim kalmadı. Ne yapacağımı bilmiyorum.",
+    "Ailem ayrı düştü, çocuklarımı bulamıyorum. Yardım edin!",
+    "Her şey bitti, baştan başlamak çok zor. Moral desteği lazım.",
+    
+    # FALSE ALARMS / LOW PRIORITY
+    "Deprem çok korkuttu ama şükür zarar yok.",
+    "Sadece eşyalar döküldü, temizlik yapıyoruz.",
+    "Kedi korktu, veteriner kontolü gerekir mi?",
+    "Camlar çatladı ama yaşanabilir durumda.",
+    
+    # COMPLEX SITUATIONS
+    "Esenyurt'ta hastane yıkıldı, 50 hasta nakli gerekiyor. Koordinasyon lazım!",
+    "Okul çöktü, çocuklar mahsur. Anne babalar panik halinde. Psikolojik destek de lazım.",
+    "Yaşlılar evi yıkıldı, 15 yaşlı insanı nakletmek gerekiyor. Özel araç ve sağlık ekibi lazım.",
+    "Fabrika patladı, kimyasal sızıntı var. Bölgeyi tahliye ediyoruz, maske ve koruyucu lazım.",
+    
+    # COORDINATION CALLS
+    "Gönüllü koordinasyonu için WhatsApp grubu: [link]. Katılın organizasyon kuralım.",
+    "Yardım malzemesi toplama merkezi Çengelköy'de açıldı. Saat 8-20 arası.",
+    "Hasta nakli için araç sahipleri toplanıyor. Bakırköy meydanında 14:00'da.",
+    "Arama kurtarma ekipleri Pendik'te toplanıyor. Deneyimli gönüllüler aranıyor.",
+    
+    # CONTACT INFO EXAMPLES
+    "Yardım lazım! İletişim: Mehmet 0532 123 45 67",
+    "Su dağıtıyoruz, adres: Taksim Meydanı No:5 Ayşe Hanım",
+    "Doktor arıyoruz, WhatsApp: +90 505 987 65 43",
+    "Ambulans: Dr. Ahmet Bey 0538 999 88 77"
+]
+
+
+    import time
+    start_time = time.time()
+    for i, tweet in enumerate(test_tweets):
+        print(f"Processing {i} of {len(test_tweets)} tweets")
+        print(extract_features_with_gpt(tweet))
+
+
+    end_time = time.time()
+    print(f"Processing {len(test_tweets)} tweets took {end_time - start_time} seconds")
+
+if __name__ == "__main__":
+    main()
