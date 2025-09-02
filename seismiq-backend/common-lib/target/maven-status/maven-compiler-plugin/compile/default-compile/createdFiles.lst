@@ -1,8 +1,0 @@
-com\seismiq\common\model\Report$ReportCategory.class
-com\seismiq\common\util\LocalDateTimeAdapter.class
-com\seismiq\common\repository\DynamoDBRepository.class
-com\seismiq\common\model\PriorityZone.class
-com\seismiq\common\model\Report$ReportStatus.class
-com\seismiq\common\model\Earthquake.class
-com\seismiq\common\model\Report.class
-com\seismiq\common\model\User.class
