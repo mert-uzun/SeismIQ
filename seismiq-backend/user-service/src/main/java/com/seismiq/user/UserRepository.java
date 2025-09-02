@@ -9,8 +9,12 @@ import java.util.Map;
 /**
  * Repository class for managing user data in DynamoDB.
  * Handles CRUD operations for user records in the SeismIQ system.
+ * 
+ * Existing methods maintained by Sıla Bozkurt.
+ * Additional methods added by Ayşe Ece Bilgi.
  *
  * @author Sıla Bozkurt
+ * @author Ayşe Ece Bilgi
  */
 public class UserRepository extends DynamoDBRepository {
     private static final String USERS_TABLE = "Users";
@@ -48,5 +52,22 @@ public class UserRepository extends DynamoDBRepository {
         user.setSocialWorker(item.get("isSocialWorker").bool());
         
         return user;
+    }
+
+    public void updateUser(User user){
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("userId", AttributeValue.builder().s(user.getUserId()).build());
+        item.put("name", AttributeValue.builder().s(user.getName()).build());
+        item.put("address", AttributeValue.builder().s(user.getAddress()).build());
+        item.put("isVolunteer", AttributeValue.builder().bool(user.isVolunteer()).build());
+        item.put("isSocialWorker", AttributeValue.builder().bool(user.isSocialWorker()).build());
+
+        putItem(item);
+    } 
+
+    public void deleteUser(String userId){
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("userId", AttributeValue.builder().s(userId).build());
+        deleteItem(key);
     }
 }
