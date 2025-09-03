@@ -13,7 +13,7 @@ public class Landmark {
     private String landmarkId;
     private String name;
     private String location;
-    private LandmarkCategory category;
+    private Category category;
     private String description;
     private Report associatedReport;
     private LocalDateTime createdAt;
@@ -24,7 +24,7 @@ public class Landmark {
     private double longitude;
 
     public Landmark(String landmarkId, String name, String location, 
-                   LandmarkCategory category, Report associatedReport, String createdBy) {
+                   Category category, Report associatedReport, String createdBy) {
         this.landmarkId = landmarkId;
         this.name = name;
         this.location = location;
@@ -37,7 +37,7 @@ public class Landmark {
     }
 
     public Landmark(String landmarkId, String name, String location, 
-                   LandmarkCategory category, Report associatedReport, String createdBy,
+                   Category category, Report associatedReport, String createdBy,
                    double latitude, double longitude) {
         this(landmarkId, name, location, category, associatedReport, createdBy);
         this.latitude = latitude;
@@ -54,8 +54,8 @@ public class Landmark {
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
 
-    public LandmarkCategory getCategory() { return category; }
-    public void setCategory(LandmarkCategory category) { this.category = category; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
