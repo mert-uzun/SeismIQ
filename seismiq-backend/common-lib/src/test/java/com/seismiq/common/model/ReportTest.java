@@ -3,6 +3,7 @@ package com.seismiq.common.model;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 class ReportTest {
     @Test
@@ -12,13 +13,14 @@ class ReportTest {
         String description = "Test description";
         String location = "Test location";
         LocalDateTime now = LocalDateTime.now();
+        Category category = new Category(UUID.randomUUID().toString(), "medical");
 
-        Report report = new Report(reportId, user, Report.ReportCategory.MEDICAL_HELP,
+        Report report = new Report(reportId, user, category,
                                  description, location, true, Report.ReportStatus.PENDING, now);
 
         assertEquals(reportId, report.getReportId());
         assertEquals(user, report.getUser());
-        assertEquals(Report.ReportCategory.MEDICAL_HELP, report.getCategory());
+        assertEquals(category, report.getCategory());
         assertEquals(description, report.getDescription());
         assertEquals(location, report.getLocation());
         assertTrue(report.isCurrentLocation());

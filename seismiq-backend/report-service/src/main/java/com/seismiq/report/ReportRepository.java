@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.seismiq.common.model.Category;
 
 import com.seismiq.common.model.Report;
 import com.seismiq.common.model.User;
@@ -53,7 +54,11 @@ public class ReportRepository extends DynamoDBRepository {
         }
         
         if (report.getCategory() != null) {
-            item.put("category", AttributeValue.builder().s(report.getCategory().name()).build());
+            Map<String, AttributeValue> categoryMap = Map.of(
+                "categoryId", AttributeValue.builder().s(report.getCategory().getCategoryID()).build(),
+                "type", AttributeValue.builder().s(report.getCategory().getCategoryType()).build()
+            );
+            item.put("category", AttributeValue.builder().m(categoryMap).build());
         }
         if (report.getDescription() != null) {
             item.put("description", AttributeValue.builder().s(report.getDescription()).build());
@@ -164,12 +169,12 @@ public class ReportRepository extends DynamoDBRepository {
         return reports;
     }
 
-    public List<Report> getReportsByCategory(Report.ReportCategory category) {
+    public List<Report> getReportsByCategory(String category) {
         QueryRequest request = QueryRequest.builder()
             .tableName(REPORTS_TABLE)
             .indexName(CATEGORY_STATUS_INDEX)
-            .keyConditionExpression("category = :category")
-            .expressionAttributeValues(Map.of(":category", AttributeValue.builder().s(category.name()).build()))
+            .keyConditionExpression("category.type = :categoryType")
+            .expressionAttributeValues(Map.of(":categoryType", AttributeValue.builder().s(category).build()))
             .build();
 
         QueryResponse response = dynamoDbClient.query(request);
@@ -265,11 +270,20 @@ public class ReportRepository extends DynamoDBRepository {
             user.setSocialWorker(userMap.get("isSocialWorker").bool());
         }
 
+        Category category = null;
+        if(item.containsKey("category")){
+            Map<String, AttributeValue> categoryMap = item.get("category").m();
+            category = new Category(
+                categoryMap.get("categoryID").s(),
+                categoryMap.get("categoryType").s()
+            );
+        }
+
         // Create the report with all required fields
         Report report = new Report(
             item.get("reportId").s(),
             user,
-            item.containsKey("category") ? Report.ReportCategory.valueOf(item.get("category").s()) : null,
+            category,
             item.containsKey("description") ? item.get("description").s() : null,
             item.containsKey("location") ? item.get("location").s() : null,
             item.containsKey("isCurrentLocation") && item.get("isCurrentLocation").bool(),

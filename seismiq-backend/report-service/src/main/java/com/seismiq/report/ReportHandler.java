@@ -7,7 +7,9 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Report;
+import com.seismiq.common.model.User;
 
 /**
  * AWS Lambda handler for processing emergency report requests.
@@ -115,31 +117,65 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
     /**
      * Creates a new report in the system.
      * Processes POST requests to /reports endpoint.
+     * Parses the request body to extract:
+     * - categoryType (used to create a Category with a unique UUID)
+     * - user (parsed into a User object)
+     * - description, location, and currentLocation fields
+     * 
+     * Initializes reportId, status, and timestamp automatically.
+     * Saves the report in the repository.
      * 
      * @param input API Gateway request containing the report data in JSON format
      * @return 201 Created on success with the created report
-     *         400 Bad Request if the input is invalid
+     *         400 Bad Request if required fields are missing or JSON is invalid
      */
     private APIGatewayProxyResponseEvent createReport(APIGatewayProxyRequestEvent input) {
         try {
-            Report report = gson.fromJson(input.getBody(), Report.class);
-            report.setReportId(UUID.randomUUID().toString());
+            Map<String, Object> bodyMap = gson.fromJson(input.getBody(), Map.class);
+
+            String categoryType = (String) bodyMap.get("categoryType");
+            if (categoryType == null) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(400)
+                        .withBody("Category type is required");
+            }
+            Category category = new Category(UUID.randomUUID().toString(), categoryType);
+
+            Object userObj = bodyMap.get("user");
+            if (userObj == null) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(400)
+                        .withBody("User data is required");
+            }
+            User user = gson.fromJson(gson.toJson(userObj), User.class);
+
+            Report report = new Report();
+            report.setReportId(UUID.randomUUID().toString()); // Assign unique report ID
+            report.setUser(user); // Set the user
+            report.setCategory(category); // Set the category
+            report.setDescription((String) bodyMap.get("description")); // Set description
+            report.setLocation((String) bodyMap.get("location")); // Set location
+
+            Object currentLocationObj = bodyMap.get("currentLocation");
+            report.setCurrentLocation(currentLocationObj != null && Boolean.parseBoolean(currentLocationObj.toString()));
+
             report.setStatus(Report.ReportStatus.PENDING);
             report.setTimestamp(LocalDateTime.now());
 
             reportRepository.createReport(report);
 
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(201)
-                .withBody(gson.toJson(report));
+                    .withStatusCode(201)
+                    .withBody(gson.toJson(report));
+
         } catch (JsonSyntaxException e) {
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(400)
-                .withBody("Invalid report format: " + e.getMessage());
+                    .withStatusCode(400)
+                    .withBody("Invalid report format: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(400)
-                .withBody("Invalid report data: " + e.getMessage());
+                    .withStatusCode(400)
+                    .withBody("Invalid report data: " + e.getMessage());
         }
     }
 
@@ -343,8 +379,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
      */
     private APIGatewayProxyResponseEvent getReportsByCategory(String categoryStr) {
         try {
-            Report.ReportCategory reportCategory = Report.ReportCategory.valueOf(categoryStr.toUpperCase());
-            List<Report> reports = reportRepository.getReportsByCategory(reportCategory);
+            List<Report> reports = reportRepository.getReportsByCategory(categoryStr);
             
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
