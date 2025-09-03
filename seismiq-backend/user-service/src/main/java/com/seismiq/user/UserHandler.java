@@ -34,6 +34,8 @@ public class UserHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
 
         if ("/users".equals(path) && "POST".equals(httpMethod)) {
             return createUser(input);
+        } else if ("/users/login".equals(path) && "POST".equals(httpMethod)){
+            return loginUser(input);
         } else if (path.startsWith("/users/")) {
             String userId = path.substring("/users/".length());
             
@@ -117,6 +119,31 @@ public class UserHandler implements RequestHandler<APIGatewayProxyRequestEvent, 
             return new APIGatewayProxyResponseEvent()
                         .withStatusCode(500)
                         .withBody("Error deleting user" + e.getMessage());
+        }
+    }
+
+    private APIGatewayProxyResponseEvent loginUser(APIGatewayProxyRequestEvent input) {
+        try {
+            User loginRequest = gson.fromJson(input.getBody(), User.class);
+            String email = loginRequest.getEmail();
+            String password = loginRequest.getPasswordHash(); // or plain password if your service handles hashing
+
+            User authenticatedUser = userService.loginUser(email, password); // implement this in UserService
+
+            if (authenticatedUser == null) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(401)
+                        .withBody("Invalid email or password");
+            }
+
+            return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(200)
+                    .withBody(gson.toJson(authenticatedUser));
+
+        } catch (Exception e) {
+            return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(500)
+                    .withBody("Error during login: " + e.getMessage());
         }
     }
 }

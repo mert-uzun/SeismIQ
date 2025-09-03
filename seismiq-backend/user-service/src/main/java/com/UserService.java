@@ -43,7 +43,7 @@ public class UserService {
     }
     
     public User loginUser(String email, String password) throws Exception {
-        User user = userRepository.getUserbyEmail(email);
+        User user = userRepository.getUserByEmail(email);
         if(user == null || ! BCrypt.checkpw(password, user.getPasswordHash())){
             throw new Exception("Invalid emial or password");
         }
