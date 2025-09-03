@@ -189,15 +189,13 @@ def preprocess_tweet(tweet_raw_content: str) -> dict:
     lemmatized = lemmatize(normalized)
     stopwords_removed = remove_stopwods(lemmatized)
     tokens = tokenize(stopwords_removed)    
-    locations_ner = extract_locations(stopwords_removed)
-    features = handcrafted_features(clean_text, tokens)
+    features = extract_features_with_gpt(stopwords_removed)
 
     return {
         "clean_text": clean_text,
         "lemmatized": lemmatized,
         "stopwords_removed": stopwords_removed,
         "tokens": tokens,
-        "locations_ner": locations_ner,
         "features": features,
         "raw_content": tweet_raw_content
     }
@@ -416,11 +414,13 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def extract_features_with_gpt(tweet_text: str) -> dict:
+def extract_features_with_gpt(preprocessed_text: str) -> dict:
 
-    if check_location_via_spacy(tweet_text):
+    if check_location_via_spacy(preprocessed_text):
         prompt = """
-            Analyze this Turkish tweet for earthquake disaster response. Extract emergency-related features and return ONLY a JSON object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
+            I have analyzed a tweet and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
+            Now, I want you to analyze this key words and phrases that are left in Turkish tweet for earthquake disaster response. Extract emergency-related features and 
+            return ONLY a JSON object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
 
             {
             "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
