@@ -57,6 +57,9 @@ def lambda_handler(event, context):
         hashtags = [hashtag["text"] for hashtag in tweet.entities.get("hashtags", [])]
         ten_years_from_now = int(time.time()) + 10 * 365 * 24 * 60 * 60
 
+        if tweets_table.get_item(Key={"tweet_id": tweet_id}).get("Item", {}).get("processed_data", {}).get("clean_text", "") == "":
+            continue # skip the tweet if it has an empty clean_text, meaning it has been filtered out by the cleaning pipeline
+
         tweets_table.put_item(Item={
             "tweet_id": tweet_id,
             "text": text,
