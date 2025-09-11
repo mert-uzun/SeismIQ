@@ -192,9 +192,7 @@ def preprocess_tweet(tweet_raw_content: str) -> dict:
     features = extract_features_with_gpt(stopwords_removed)
 
     return {
-        "clean_text": clean_text,
-        "lemmatized": lemmatized,
-        "stopwords_removed": stopwords_removed,
+        "preprocessed_text": stopwords_removed,
         "tokens": tokens,
         "features": features,
         "raw_content": tweet_raw_content
@@ -415,7 +413,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def extract_features_with_gpt(preprocessed_text: str) -> dict:
-
+# GPT2 EMBEDDINGS AND TF-IDF FEAURES CAN BE MERGED AND REPLACE THIS FUNCTION
     if check_location_via_spacy(preprocessed_text):
         prompt = """
             I have analyzed a tweet and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
@@ -428,7 +426,7 @@ def extract_features_with_gpt(preprocessed_text: str) -> dict:
             "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
             "location": city/district/neighborhood/address if present; else null,
             "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
-            "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+"            situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
             "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
             "contact_info_present": boolean,
             "contact_info": identify if present, else null
@@ -436,6 +434,7 @@ def extract_features_with_gpt(preprocessed_text: str) -> dict:
 
             Tweet: "{tweet_text}"
         """
+        # NOTE: LOOK UP JSON PARSING // context window
 
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
