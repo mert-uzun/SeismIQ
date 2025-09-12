@@ -7,10 +7,14 @@ import os
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import BallTree
+from shapely.geometry import Point
+from shapely.strtree import STRtree
+import geopandas as gpd
 
 WORLD_RADIUS_KM = 6371
-
+LOCAL_GEOJSON_PATH = "/tmp/land.geojson"
 url = 'http://www.koeri.boun.edu.tr/scripts/lst1.asp'
+
 
 earthquakes_table = boto3.resource("dynamodb").Table(os.getenv("EARTHQUAKES_TABLE_NAME"))
 last_earthquake_date_table = boto3.resource("dynamodb").Table(os.getenv("LAST_EARTHQUAKE_DATE_TABLE_NAME"))
@@ -18,6 +22,7 @@ r = requests.get(url)
 
 cities_data = None
 ball_tree = None
+_land_index = None
 
 def _get_last_earthquake_date(table):
     response = table.get_item(Key={"tracker_id": "last_earthquake_date"})
@@ -70,8 +75,33 @@ def _distance_to_nearest_settlement(lat, lon) -> tuple[float, str]:
 
     return float(distance_km), str(city_name)
 
-def _is_offshore():
+def _ensure_land_index():
+    global _land_index
 
+    if _land_index:
+        return _land_index
+    
+    if not os.path.exists(LOCAL_GEOJSON_PATH):
+        boto3.resource("s3").Bucket(os.getenv("GEOJSON_BUCKET")).download_file(os.getenv("GEOJSON_KEY"), LOCAL_GEOJSON_PATH)
+    
+    gdf = gpd.read_file(LOCAL_GEOJSON_PATH)
+    if gdf.crs is None or str(gdf.crs).upper() not in ("EPSG:4326", "WGS84"):
+        gdf = gdf.to_crs(epsg=4326)
+    
+    geoms = list(gdf.geometry)
+    _land_index = STRtree(geoms)
+
+    return _land_index
+
+def _is_offshore(lat: float, lon: float) -> bool:
+    p = Point(lon, lat)
+
+    candidates = _ensure_land_index().query(p)
+
+    for candidate in candidates:
+        if candidate.contains(p):
+            return False
+    return True
 
 def _determine_earthquake_ttl(quake: dict) -> float:
     dt = datetime.strptime(quake.get('date', "") + " " quake.get('time', ""), "%Y.%m.%d %H:%M:%S")
