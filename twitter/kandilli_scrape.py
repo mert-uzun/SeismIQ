@@ -84,7 +84,7 @@ def _determine_earthquake_ttl(quake: dict) -> float:
 
     # FORMULA
     M = Mw if Mw else ML
-    D = _distance_to_nearest_settlement(lat, lon)
+    D, nearest_settlement_name = _distance_to_nearest_settlement(lat, lon)
     Rv = math.sqrt(D*D + h*h)
     O = .85 if _is_offshore(lat, lon) else 1
 
