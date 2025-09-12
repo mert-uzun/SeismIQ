@@ -104,19 +104,19 @@ def _is_offshore(lat: float, lon: float) -> bool:
     return True
 
 def _determine_earthquake_ttl(quake: dict) -> float:
-    dt = datetime.strptime(quake.get('date', "") + " " quake.get('time', ""), "%Y.%m.%d %H:%M:%S")
-    lat = float(quake.get('latitude', ""))
-    lon = float(quake.get('longtitude', ""))
-    h = float(quake.get('depth', ""))
-    ML = float(quake.get('ML', ""))
-    Mw = float(quake.get('Mw', ""))
+    dt = datetime.strptime(quake.get('date', "") + " " + quake.get('time', ""), "%Y.%m.%d %H:%M:%S")
+    lat = float(quake.get('latitude', None))
+    lon = float(quake.get('longitude', None))
+    h = float(quake.get('depth_km', None))
+    ML = float(quake.get('ML', None))
+    Mw = float(quake.get('Mw', None))
 
 
     # FORMULA
     M = Mw if Mw else ML
     D, nearest_settlement_name = _distance_to_nearest_settlement(lat, lon)
     Rv = math.sqrt(D*D + h*h)
-    O = .85 if _is_offshore(lat, lon) else 1
+    O = .85 if _is_offshore(lat, lon) else 1 # TODO: Instead of magic number .85 we can come up with a continuous function of distance from the nearest big settlement
 
     beta = 1.1
     S = (M - beta * math.log10(Rv + 1)) * O
@@ -127,7 +127,7 @@ def _determine_earthquake_ttl(quake: dict) -> float:
     S50 = 3.202 # S value in the middle of the graph, heuristic value for now, TODO: determine it later once we have enough data
     k = 2.4 # Steepnes of the curve around S50, heuristic value for now, TODO: determine it later once we have enough data
     TTL = TTLmin + (TTLmax - TTLmin) / (1 + math.pow(math.e, -k * (S - S50)))
-    TTLfinal = math.max(TTLmax, TTL)
+    TTLfinal = max(TTLmax, TTL)
 
     # Datetime from Turkey's timezone to UTC for epoch
     dt = dt.replace(tzinfo=timezone(timedelta(hours=3)))
