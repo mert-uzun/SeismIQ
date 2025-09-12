@@ -4,12 +4,20 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 import boto3
 import os
+import pandas as pd
+import numpy as np
+from sklearn.neighbors import BallTree
+
+WORLD_RADIUS_KM = 6371
 
 url = 'http://www.koeri.boun.edu.tr/scripts/lst1.asp'
 
 earthquakes_table = boto3.resource("dynamodb").Table(os.getenv("EARTHQUAKES_TABLE_NAME"))
 last_earthquake_date_table = boto3.resource("dynamodb").Table(os.getenv("LAST_EARTHQUAKE_DATE_TABLE_NAME"))
 r = requests.get(url)
+
+cities_data = None
+ball_tree = None
 
 def _get_last_earthquake_date(table):
     response = table.get_item(Key={"tracker_id": "last_earthquake_date"})
@@ -24,8 +32,43 @@ def _get_last_earthquake_date(table):
 def _update_last_earthquake_date(date):
     last_earthquake_date_table.put_item(Item={"tracker_id": "last_earthquake_date", "value": date})
 
-def _distance_to_nearest_settlement(lat, lon) -> float:
-    
+def load_settlement_data():
+    global cities_data, ball_tree
+
+    if not cities_data and not ball_tree:
+        return
+
+    try: 
+        # Load data from S3
+        bucket_name = os.getenv("GEO_BUCKET")
+        key_name = os.getenv("GEO_KEY")
+
+        cities_data = pd.read_parquet(f"s3://{bucket_name}/{key_name}")
+
+        # Force conversion to numeric types just to be safe
+        cities_data["latitude"] = pd.to_numeric(cities_data["latitude"], errors="coerce")
+        cities_data["longitude"] = pd.to_numeric(cities_data["longitude"], errors="coerce")
+        
+        # Create Ball Tree
+        coords_rad = np.radians(cities_data[["latitude", "longitude"]].values)
+        ball_tree = BallTree(coords_rad, metric="haversine")
+
+
+    except Exception as e:
+        print(f"Error loading settlement data: {e}")
+        cities_data = pd.DataFrame()
+        ball_tree = None
+        
+def _distance_to_nearest_settlement(lat, lon) -> tuple[float, str]:
+    global ball_tree, cities_data, WORLD_RADIUS_KM
+
+    coord_rad = np.radians([[lat, lon]])
+    distance_rad, city_index = ball_tree.query(coord_rad, k=1) # k = 1 because we only want the nearest city in this instance # NOTE: this will return the values in a 2D array format
+
+    distance_km = distance_rad[0][0] * WORLD_RADIUS_KM
+    city_name = cities_data.iloc[city_index[0][0]]["name"]
+
+    return float(distance_km), str(city_name)
 
 def _is_offshore():
 
