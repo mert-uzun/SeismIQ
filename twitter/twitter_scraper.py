@@ -22,6 +22,9 @@ dynamodb = boto3.resource("dynamodb")
 tweets_table = dynamodb.Table(os.environ["TWEETS_TABLE_NAME"])
 last_seen_table = dynamodb.Table(os.environ["LAST_SEEN_TABLE_NAME"])
 
+# Kandilli Earthquake Research Institute URL
+URL = 'http://www.koeri.boun.edu.tr/scripts/lst1.asp'
+
 def lambda_handler(event, context):
     
     # Get last seen ID
