@@ -165,7 +165,7 @@ def _determine_earthquake_Svalue_and_ttl(quake: dict) -> float:
     # function, mapping operational intensity (S) to information lifetime.
 
     M = Mw if Mw else ML
-    beta, a7 = _beta(M)
+    beta, a7 = _beta_and_a7(M)
     D, nearest_settlement_name = _distance_to_nearest_settlement(lat, lon)
     Rv = math.sqrt(D*D + h*h)
     Rstar = math.sqrt(Rv*Rv + a7*a7)
