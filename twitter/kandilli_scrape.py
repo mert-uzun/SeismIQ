@@ -132,37 +132,38 @@ def _beta_and_a7(M: float) -> tuple:
     return beta, a7
 
 def _determine_earthquake_Svalue_and_ttl(quake: dict) -> float:
+    """
+    --- Operational intensity proxy ("S" score) ---
+    S is an operational earthquake impact score, derived from the
+    Akkar & Cagnan (2010, AC10) GMPE attenuation form.
+    
+    - M: Moment magnitude if available (Mw), else local magnitude (ML).
+    - β(M): magnitude-dependent distance attenuation coefficient
+            from AC10 GMPE (PGA coefficients).
+    - Rv = sqrt(D^2 + h^2): hypocentral distance (km).
+    - R* = sqrt(Rv^2 + a7^2): effective distance with near-source
+            saturation (a7 ≈ 7.3 km from AC10).
+    - O: offshore reduction factor (1.0 onshore, <1 offshore).
+    
+    Formula:
+      S = ( M - β(M) * log10(R* + 1) ) * O
+    
+    Scientific context:
+      - β(M) term: "magnitude-dependent distance attenuation slope"
+        (from AC10 GMPE distance attenuation coefficient).
+      - log10(R*): "distance scaling term with near-source saturation".
+      - O: simple heuristic modifier for offshore vs onshore.
+    
+    TTL (time-to-live) is then derived from S using a logistic survival
+    function, mapping operational intensity (S) to information lifetime.
+    """
+
     dt = datetime.strptime(quake.get('date', "") + " " + quake.get('time', ""), "%Y.%m.%d %H:%M:%S")
     lat = float(quake.get('latitude', None))
     lon = float(quake.get('longitude', None))
     h = float(quake.get('depth_km', None))
     ML = float(quake.get('ML', None))
     Mw = float(quake.get('Mw', None))
-
-
-    # --- Operational intensity proxy ("S" score) ---
-    # S is an operational earthquake impact score, derived from the
-    # Akkar & Cagnan (2010, AC10) GMPE attenuation form.
-    # 
-    # - M: Moment magnitude if available (Mw), else local magnitude (ML).
-    # - β(M): magnitude-dependent distance attenuation coefficient
-    #         from AC10 GMPE (PGA coefficients).
-    # - Rv = sqrt(D^2 + h^2): hypocentral distance (km).
-    # - R* = sqrt(Rv^2 + a7^2): effective distance with near-source
-    #         saturation (a7 ≈ 7.3 km from AC10).
-    # - O: offshore reduction factor (1.0 onshore, <1 offshore).
-    #
-    # Formula:
-    #   S = ( M - β(M) * log10(R* + 1) ) * O
-    #
-    # Scientific context:
-    #   - β(M) term: "magnitude-dependent distance attenuation slope"
-    #     (from AC10 GMPE distance attenuation coefficient).
-    #   - log10(R*): "distance scaling term with near-source saturation".
-    #   - O: simple heuristic modifier for offshore vs onshore.
-    #
-    # TTL (time-to-live) is then derived from S using a logistic survival
-    # function, mapping operational intensity (S) to information lifetime.
 
     M = Mw if Mw else ML
     beta, a7 = _beta_and_a7(M)
@@ -188,7 +189,110 @@ def _determine_earthquake_Svalue_and_ttl(quake: dict) -> float:
 
     return S, quake_datetime_as_epoch + (TTLfinal * 60) # Return the value in seconds because we are using epoch time value
 
-# print(r.content) -> to check if the content is being returned
+def calculate_earthquake_danger_radius(quake: dict) -> float:
+    """ 
+    --- Scientific Rationale for S_threshold Selection ---
+    The S_threshold value defines the level at which an earthquake is considered
+    to have "damage potential". This threshold is designed to be more sensitive
+    than the threshold for "fatal" potential (typically Mw > 6.0, S > 4.0),
+    in order to capture lower magnitude events (in the Mw 5.0-5.5 range)
+    that can still cause structural damage.
+    
+    Determination of the Threshold Value:
+    The value was determined by testing plausible, high-damage-potential scenarios
+    using the S-score formula, which is based on the Akkar & Cagnan (2010) GMPE model.
+    These scenarios model earthquakes that are shallow and close to populated areas.
+    
+    Sample Calculations:
+    - Scenario 1 (Mw 5.0): A shallow (h=10km) and nearby (D=15km) earthquake yields S ≈ 3.5
+    - Scenario 2 (Mw 5.5): Under the same conditions (h=10km, D=15km), S ≈ 4.0
+    - Scenario 3 (Mw 5.5): At a moderate depth/distance (h=15km, D=25km), S ≈ 3.8
+
+    The Mw 5.0-5.5 range was chosen to calibrate the S_threshold against a recognized
+    benchmark for the onset of structural damage. This benchmark corresponds to Level VI 
+    on the Modified Mercalli Intensity (MMI) scale, where light damage to structures is 
+    first observed. According to empirical data from seismological bodies like the USGS, 
+    shallow earthquakes within the Mw 5.0-5.5 magnitude range are precisely those capable 
+    of generating MMI VI shaking near the epicenter. Anchoring our calculations to this range
+    ensures our danger radius is based on a standard engineering and seismological damage 
+    threshold, rather than an arbitrary magnitude figure.
+
+    Formulas used to calculate the danger radius are:
+        S_thresh = (M - beta * log10(Rstar + 1)) * O
+
+        Solve for Rstar:
+        log10(Rstar + 1) = (M - (S_thresh / O)) / beta
+        Rstar + 1 = 10 ** ((M - (S_thresh / O)) / beta)
+        Rstar = (10 ** ((M - (S_thresh / O)) / beta)) - 1
+
+        Now, remember that Rstar depends on D:
+        Rstar = sqrt(Rv*Rv + a7*a7) and Rv = sqrt(D*D + h*h)
+        So, Rstar**2 = D**2 + h**2 + a7**2
+        
+        Solve for D:
+        D**2 = Rstar**2 - h**2 - a7**2
+        D = sqrt(Rstar**2 - h**2 - a7**2)
+
+        This final D is the radius in kilometers from the epicenter where the shaking intensity 
+        drops below your defined danger level.
+    
+    Conclusion:
+    The calculations show that S-scores for earthquakes with damage potential
+    are concentrated in the 3.5 to 4.0 range. The chosen threshold of 3.7
+    represents a balanced midpoint in this range. This value is low enough to
+    capture significant Mw 5.0+ events but high enough to filter out smaller tremors
+    """
+
+    lat = float(quake.get('latitude', None))
+    lon = float(quake.get('longitude', None))
+    h = float(quake.get('depth_km', None))
+    M = float(quake.get('Mw', None)) if quake.get('Mw', None) else float(quake.get('ML', None))
+    beta, a7 = _beta_and_a7(M)
+    O = .85 if _is_offshore(lat, lon) else 1
+
+    S_thresh = 3.7
+
+    try:
+        Rstar = (10 ** ((M - (S_thresh / O)) / beta)) - 1
+        D = math.sqrt(Rstar**2 - h**2 - a7**2)
+        return D
+    except (ValueError, OverflowError, ZeroDivisionError) as e:
+        print(f"Error calculating the danger radius: {e}")
+        return 0.0
+
+def find_settlements_within_danger_radius(quake: dict) -> list[str]:
+    global cities_data, WORLD_RADIUS_KM
+
+    if cities_data is None:
+        load_settlement_data()
+
+    quake_lat = float(quake.get('latitude', None))
+    quake_lon = float(quake.get('longitude', None))
+    danger_radius_in_radians = calculate_earthquake_danger_radius(quake) / WORLD_RADIUS_KM # Because ball tree queries expect radians both as coordinates and radius
+
+    if danger_radius_in_radians == 0.0:
+        return []
+
+    near_settlements_data = cities_data[cities_data["feature_code"].isin(["PPLA", "PPLA2", "PPLC"])]
+    near_settlements_data = near_settlements_data[near_settlements_data["country_code"] == "TR"]
+    near_settlements_data["latitude"] = pd.to_numeric(near_settlements_data["latitude"], errors="coerce")
+    near_settlements_data["longitude"] = pd.to_numeric(near_settlements_data["longitude"], errors="coerce")
+
+    near_settlements_data = near_settlements_data.dropna(subset=["latitude", "longitude"])
+    
+    # Reset indexes to avoid issues with indexes mismatching between the dataframe and ball tree
+    near_settlements_data = near_settlements_data.reset_index(drop=True)
+
+    # Create a ball tree for the filtered settlements
+    near_settlements_coords_rad = np.radians(near_settlements_data[["latitude", "longitude"]]).values
+    near_settlements_ball_tree = BallTree(near_settlements_coords_rad, metric="haversine")
+
+    center_coord_rad = np.radians([[quake_lat, quake_lon]])
+    city_indices = near_settlements_ball_tree.query_radius(center_coord_rad, r=danger_radius_in_radians)[0]
+
+    settlement_names = near_settlements_data.iloc[city_indices]["name"].tolist()
+    
+    return settlement_names
 
 def handle_earthquake_data(URL: str):
     try:
@@ -278,7 +382,7 @@ def handle_earthquake_data(URL: str):
                     'nearest_settlement_distance': nearest_settlement_distance,
                     'nearest_settlement_name': nearest_settlement_name,
                 }
-
+                quake['possibly affected_settlements'] = find_settlements_within_danger_radius(quake)
                 quake["S"], quake["ttl"] = _determine_earthquake_Svalue_and_ttl(quake)
 
                 quake["is_fatal"] = quake["S"] > 4.0 # This value is based on the danger level threshold calculations explained below
@@ -286,7 +390,7 @@ def handle_earthquake_data(URL: str):
                 earthquakes_table.put_item(Item=quake)
                 dates.append(quake['date'])
 
-        _update_last_earthquake_date(dates[0])
+        _update_last_earthquake_date(dates[0]) # First is chosen because we read the last earthquake first
 
         return {
             "success": True,
