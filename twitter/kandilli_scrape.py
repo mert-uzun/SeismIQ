@@ -321,7 +321,17 @@ def get_quake_settlement_and_S_value_data() -> list[tuple[str, float]]:
 def get_the_twitter_query(settlements: list[tuple[str, float]]) -> str:
     base_query = "#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media"
     settlements = [settlement[0].lower() for settlement in settlements]
-    
+
+    if not settlements:
+        return base_query
+
+    query_extension = settlements[0]
+
+    for settlement in settlements[1:]:
+        if len(query_extension + " OR " + settlement) >= 500 - len("() ") - len(base_query):
+            break
+        else:
+            query_extension += " OR " + settlement
 
     return "(" + query_extension + ") " + base_query
 
