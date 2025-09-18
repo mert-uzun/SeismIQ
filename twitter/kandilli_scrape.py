@@ -294,6 +294,38 @@ def find_settlements_within_danger_radius(quake: dict) -> list[str]:
     
     return settlement_names
 
+def get_quake_settlement_and_S_value_data() -> list[tuple[str, float]]:
+    response = earthquakes_table.scan()
+    earthquakes = response.get("Items", [])
+
+    while "LastEvaluatedKey" in response:
+        response = earthquakes_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        earthquakes.extend(response.get("Items", []))
+    
+    settlements_and_S_values = {}
+
+    for earthquake in earthquakes:
+        s_value = earthquake.get("S", None)
+        settlements = earthquake.get("possibly_affected_settlements", None)
+
+        if s_value and settlements:
+            for settlement in settlements:
+                settlements_and_S_values[settlement] = settlements_and_S_values.get(settlement, 0) + s_value
+        else:
+            continue
+
+    settlements_and_S_values = sorted(settlements_and_S_values.items(), key=lambda x: x[1], reverse=True)
+
+    return settlements_and_S_values
+
+def get_the_twitter_query(settlements: list[tuple[str, float]]) -> str:
+    base_query = "#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media"
+    settlements = [settlement[0].lower() for settlement in settlements]
+    
+
+    return "(" + query_extension + ") " + base_query
+
+
 def handle_earthquake_data(URL: str):
     try:
         r = requests.get(URL)
@@ -382,7 +414,7 @@ def handle_earthquake_data(URL: str):
                     'nearest_settlement_distance': nearest_settlement_distance,
                     'nearest_settlement_name': nearest_settlement_name,
                 }
-                quake['possibly affected_settlements'] = find_settlements_within_danger_radius(quake)
+                quake['possibly_affected_settlements'] = find_settlements_within_danger_radius(quake)
                 quake["S"], quake["ttl"] = _determine_earthquake_Svalue_and_ttl(quake)
 
                 quake["is_fatal"] = quake["S"] > 4.0 # This value is based on the danger level threshold calculations explained below
