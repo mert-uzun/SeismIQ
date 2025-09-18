@@ -146,8 +146,7 @@ seismiq/
 
 -  Offline report submission with later syncing  
 -  Admin dashboard with stats and heatmaps  
--  Volunteer matching system with proximity-based alerts  Multilingual NLP support (Turkish, Arabic, Kurdish)  
--  Integration with AFAD, Red Crescent, NGOs
+-  Volunteer matching system with proximity-based alerts via NLP support (Turkish)
 
 ---
 
@@ -159,6 +158,6 @@ This project is licensed under the **MIT License**.
 
 ## ❤️ Acknowledgments
 
-Special thanks to the **AWS Student Engagement Program**and our mentors Utku Yavus and Elisa Ronga for their support and help throughout this program. As well as speacial thanks and congratulations to all team members (Sıla Bozkurt, Salih Mert Uzun, Berksu Tekkaya, Ayşe Ece Bilgi, Ekin Berra Öztürk ) who contributed to this project. SeismIQ is built with the belief that **rapid, decentralized, and citizen-powered disaster response** can save lives.
+Special thanks to the **AWS Student Engagement Program**and our mentors Utku Yavus and Elisa Ronga for their support and help throughout this program. As well as speacial thanks and congratulations to all team members (Sıla Bozkurt, Salih Mert Uzun, Berksu Tekkaya, Ayşe Ece Bilgi) who contributed to this project. SeismIQ is built with the belief that **rapid, decentralized, and citizen-powered disaster response** can save lives.
 
 ---
