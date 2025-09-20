@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
+Parameters:
+  MobilePushPlatformApplicationArn:
+    Type: String
+    Description: ARN of the pre-created SNS Platform Application (e.g., arn:aws:sns:...:app/GCM/seismiq-android)
 Description: SeismIQ Backend Services
 
 Globals:
@@ -7,9 +11,14 @@ Globals:
     Runtime: java21
     MemorySize: 512
     Timeout: 30
+    Environment:
+      Variables:
+        PLATFORM_APP_ARN:
+          Ref: MobilePushPlatformApplicationArn
+        REGION:
+          Ref: AWS::Region
 
 Resources:
-  # API Gateway (explicit; avoid the reserved "ServerlessRestApi" id)
   SeismiqApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -38,7 +47,7 @@ Resources:
       Runtime: java21
       MemorySize: 512
       Timeout: 30
-      CodeUri: ../earthquake-service/target/earthquake-service.jar
+      CodeUri: ../earthquake-service
       Environment:
         Variables:
           REGION:
@@ -151,9 +160,18 @@ Resources:
       AttributeDefinitions:
         - AttributeName: userId
           AttributeType: S
+        - AttributeName: email
+          AttributeType: S
       KeySchema:
         - AttributeName: userId
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
 
   ReportsTable:
     Type: AWS::DynamoDB::Table
@@ -195,7 +213,7 @@ Resources:
   UserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../user-service/target/user-service.jar
+      CodeUri: ../user-service
       Handler: com.seismiq.user.UserHandler::handleRequest
       Runtime: java21
       MemorySize: 512
@@ -213,7 +231,16 @@ Resources:
             Path: /users
             Method: POST
             Auth:
-              Authorizer: CognitoAuthorizer
+              Authorizer: NONE
+        LoginUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
         GetUser:
           Type: Api
           Properties:
@@ -223,11 +250,29 @@ Resources:
             Method: GET
             Auth:
               Authorizer: CognitoAuthorizer
+        UpdateUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   ReportFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../report-service/target/report-service.jar
+      CodeUri: ../report-service
       Handler: com.seismiq.report.ReportHandler::handleRequest
       Runtime: java21
       MemorySize: 512
@@ -332,21 +377,14 @@ Resources:
   LandmarkNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName::Sub:: ${AWS::StackName}-landmark-notifications
-
-  # SNS Platform Application for Mobile Push Notifications
-  MobilePushPlatformApplication:
-    Type: AWS::SNS::PlatformApplication
-    Properties:
-      Name::Sub:: ${AWS::StackName}-mobile-push
-      Platform: GCM  # For Android. Use APNS for iOS
-      Attributes:
-        PlatformCredential: ${self:custom.gcmApiKey}  # Add this to your parameters
+      TopicName:
+        Fn::Sub: ${AWS::StackName}-landmark-notifications
 
   LandmarksTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName::Sub:: ${AWS::StackName}-landmarks
+      TableName:
+        Fn::Sub: "${AWS::StackName}-landmarks"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: landmarkId

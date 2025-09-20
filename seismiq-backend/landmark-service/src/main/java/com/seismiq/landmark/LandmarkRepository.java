@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Landmark;
-import com.seismiq.common.model.LandmarkCategory;
-import ch.hsr.geohash.GeoHash;
 
+import ch.hsr.geohash.GeoHash;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
@@ -43,7 +43,7 @@ public class LandmarkRepository {
         item.put("landmarkId", AttributeValue.builder().s(landmark.getLandmarkId()).build());
         item.put("name", AttributeValue.builder().s(landmark.getName()).build());
         item.put("location", AttributeValue.builder().s(landmark.getLocation()).build());
-        item.put("category", AttributeValue.builder().s(landmark.getCategory().name()).build());
+        item.put("category", AttributeValue.builder().s(landmark.getCategory().getCategoryType()).build());
         
         // Handle null description safely
         if (landmark.getDescription() != null) {
@@ -150,10 +150,9 @@ public class LandmarkRepository {
     }
 
     public List<Landmark> findLandmarksNearLocation(double latitude, double longitude, double radiusKm) {
-        // Convert location to geohash with precision based on radius
         int precision = getGeohashPrecision(radiusKm);
         String geohash = GeoHash.withCharacterPrecision(latitude, longitude, precision).toBase32();
-        String geohashPrefix = geohash.substring(0, precision - 2); // Use a slightly wider area
+        String geohashPrefix = geohash.substring(0, precision - 2); 
 
         QueryRequest request = QueryRequest.builder()
             .tableName(tableName)
@@ -199,10 +198,11 @@ public class LandmarkRepository {
             item.get("landmarkId").s(),
             item.get("name").s(),
             item.get("location").s(),
-            LandmarkCategory.valueOf(item.get("category").s()),
-            null, // Associated report will be set below if exists
+            Category.valueOf(item.get("category").s()),
+            item.containsKey("associatedReportId") ? null : null, 
             item.get("createdBy").s()
         );
+
         
         landmark.setLatitude(latitude);
         landmark.setLongitude(longitude);

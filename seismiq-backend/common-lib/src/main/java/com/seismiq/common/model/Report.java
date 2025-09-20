@@ -143,4 +143,20 @@ public class Report {
 
     public String getAdditionalNotes() { return additionalNotes; }
     public void setAdditionalNotes(String additionalNotes) { this.additionalNotes = additionalNotes; }
+    
+    /**
+     * Gets the additional info for the report - alias for getAdditionalNotes for backward compatibility
+     * @return The additional information/notes for this report
+     */
+    public String getAdditionalInfo() { 
+        return additionalNotes; 
+    }
+    
+    /**
+     * Sets the additional info for the report - alias for setAdditionalNotes for backward compatibility
+     * @param additionalInfo The additional information/notes for this report
+     */
+    public void setAdditionalInfo(String additionalInfo) { 
+        this.additionalNotes = additionalInfo; 
+    }
 }

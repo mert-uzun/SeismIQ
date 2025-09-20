@@ -1,12 +1,16 @@
 package com.seismiq.user;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.seismiq.common.model.User;
 import com.seismiq.common.repository.DynamoDBRepository;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.*;
-import java.util.HashMap;
-import java.util.Map;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 /**
  * Repository class for managing user data in DynamoDB.
@@ -91,13 +95,14 @@ public class UserRepository extends DynamoDBRepository {
         Map<String, AttributeValue> expressionValues = new HashMap<>();
         expressionValues.put(":email", AttributeValue.builder().s(email).build());
 
-        ScanRequest scanRequest = ScanRequest.builder()
+        QueryRequest queryRequest = QueryRequest.builder()
                 .tableName(USERS_TABLE)
-                .filterExpression("email = :email")
+                .indexName("EmailIndex")
+                .keyConditionExpression("email = :email")
                 .expressionAttributeValues(expressionValues)
                 .build();
 
-        ScanResponse result = this.dynamoDb.scan(scanRequest); // use the dynamoDb field from your superclass
+        QueryResponse result = this.dynamoDb.query(queryRequest);
 
         if (result.count() == 0) return null;
 
@@ -109,6 +114,7 @@ public class UserRepository extends DynamoDBRepository {
         user.setVolunteer(item.get("isVolunteer").bool());
         user.setSocialWorker(item.get("isSocialWorker").bool());
         if (item.containsKey("email")) user.setEmail(item.get("email").s());
+        if (item.containsKey("passwordHash")) user.setPasswordHash(item.get("passwordHash").s());
 
         return user;
     }

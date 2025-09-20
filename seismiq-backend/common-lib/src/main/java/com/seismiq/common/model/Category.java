@@ -5,7 +5,7 @@ package com.seismiq.common.model;
  * Each category has an identifier and a type.
  * Categories include: food, water, medical, equipment, and other.
  * 
- * @author Ayşe Ece Bilgi
+ * @author Ayşe Ece Bilgi and Sıla Bozkurt
  */
 
 public class Category {
@@ -41,5 +41,21 @@ public class Category {
     @Override
     public String toString(){
         return "Category: \n" + "Category ID: " + categoryID + "\n" + "Category Type: " + categoryType;
+    }
+
+    /**
+     * Static factory method to create a Category object from a category type string.
+     * This method is used when deserializing from storage or for convenient creation.
+     * 
+     * @param categoryType The category type string
+     * @return A new Category object with the given type
+     */
+    public static Category valueOf(String categoryType) {
+        if (categoryType == null || categoryType.isEmpty()) {
+            throw new IllegalArgumentException("Category type cannot be null or empty");
+        }
+        // Generate a consistent ID based on the type
+        String categoryID = categoryType.toLowerCase().replace(' ', '_');
+        return new Category(categoryID, categoryType);
     }
 }
