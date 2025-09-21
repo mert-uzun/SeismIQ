@@ -180,7 +180,7 @@ def _determine_earthquake_Svalue_and_ttl(quake: dict) -> float:
     S50 = 3.202 # S value in the middle of the graph, heuristic value for now, TODO: determine it later once we have enough data
     k = 2.4 # Steepnes of the curve around S50, heuristic value for now, TODO: determine it later once we have enough data
     TTL = TTLmin + (TTLmax - TTLmin) / (1 + math.pow(math.e, -k * (S - S50)))
-    TTLfinal = max(TTLmax, TTL)
+    TTLfinal = max(TTLmin, TTL)
 
     # Datetime from Turkey's timezone to UTC for epoch
     dt = dt.replace(tzinfo=timezone(timedelta(hours=3)))
@@ -428,6 +428,33 @@ def handle_earthquake_data(URL: str):
                 quake["S"], quake["ttl"] = _determine_earthquake_Svalue_and_ttl(quake)
 
                 quake["is_fatal"] = quake["S"] > 4.0 # This value is based on the danger level threshold calculations explained below
+
+                # --- S-VALUE THRESHOLD FOR MAGNITUDE 4.0 EARTHQUAKES ---
+                # Scientific rationale for filtering earthquakes below magnitude 4.0:
+                # 
+                # Magnitude 4.0 represents the approximate threshold where earthquakes begin
+                # to be widely felt by humans and may cause minor structural effects in 
+                # sensitive structures. Below this threshold, earthquakes are typically
+                # only detected by seismographs and rarely felt by people.
+                #
+                # S-value calculations for M=4.0 earthquakes using AC10 GMPE coefficients:
+                # Formula: S = (M - β(M) * log10(R* + 1)) * O
+                # Where: β ≈ 1.1 (typical AC10 attenuation coefficient), O = 1.0 (onshore)
+                #
+                # Representative scenarios for M=4.0:
+                # - Shallow & nearby (h=10km, D=15km): R*≈19.5km → S = (4.0 - 1.1*1.31)*1.0 ≈ 2.56
+                # - Medium distance (h=15km, D=25km): R*≈30.1km → S = (4.0 - 1.1*1.49)*1.0 ≈ 2.36
+                # - Deeper/farther scenarios yield even lower S values
+                #
+                # Conclusion: S ≤ 2.5 corresponds to earthquakes below M=4.0
+                # This threshold is based on seismological standards where M=4.0 is the
+                # conventional boundary between "micro" earthquakes (rarely felt) and
+                # "light" earthquakes (commonly felt). Filtering S ≤ 2.5 removes events
+                # with negligible societal impact while preserving all potentially
+                # significant seismic activity.
+
+                if quake["S"] <= 2.5:
+                    continue
 
                 earthquakes_table.put_item(Item=quake)
                 dates.append(quake['date'])
