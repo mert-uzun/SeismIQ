@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets
+from kandilli_scrape import handle_earthquake_data, get_the_twitter_query, get_quake_settlement_and_S_value_data
 import tweepy
 import datetime
 import boto3
@@ -21,25 +22,35 @@ api = tweepy.API(auth)
 dynamodb = boto3.resource("dynamodb")
 tweets_table = dynamodb.Table(os.environ["TWEETS_TABLE_NAME"])
 last_seen_table = dynamodb.Table(os.environ["LAST_SEEN_TABLE_NAME"])
+earthquakes_table = dynamodb.Table(os.environ["EARTHQUAKES_TABLE_NAME"])
+
+# Kandilli Earthquake Research Institute URL
+URL = 'http://www.koeri.boun.edu.tr/scripts/lst1.asp'
 
 def lambda_handler(event, context):
-    
+    # Collect and save earthquake data
+    handle_earthquake_data(URL)
+
+    settlements_and_S_value_data = get_quake_settlement_and_S_value_data()
+
+    twitter_query = get_the_twitter_query(settlements_and_S_value_data)
+
     # Get last seen ID
     last_seen_id = get_last_seen_id(last_seen_table)
 
     if(last_seen_id is None): # use time filter
         tweets = api.search_tweets(
-            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media",
+            q=twitter_query,
             count=100,
             tweet_mode="extended",
-            result_type="recent",
+            result_type="recent"
         )
 
         # filter by time last 30 minutes because this is the first search
         tweets = [tweet for tweet in tweets if tweet.created_at > datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=30)]
     else: # use since_id
         tweets = api.search_tweets(
-            q="#deprem (#yardım OR ihtiyac OR yardım OR ihtiyaç OR enkaz OR erzak) lang:tr -is:retweet -has:media",
+            q=twitter_query,
             since_id=last_seen_id,
             count=100,
             tweet_mode="extended",
@@ -56,6 +67,9 @@ def lambda_handler(event, context):
         user = tweet.user.screen_name
         hashtags = [hashtag["text"] for hashtag in tweet.entities.get("hashtags", [])]
         ten_years_from_now = int(time.time()) + 10 * 365 * 24 * 60 * 60
+
+        if tweets_table.get_item(Key={"tweet_id": tweet_id}).get("Item", {}).get("processed_data", {}).get("clean_text", "") == "":
+            continue # skip the tweet if it has an empty clean_text, meaning it has been filtered out by the cleaning pipeline
 
         tweets_table.put_item(Item={
             "tweet_id": tweet_id,
