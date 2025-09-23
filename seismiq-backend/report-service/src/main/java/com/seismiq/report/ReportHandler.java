@@ -7,16 +7,15 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import com.seismiq.common.model.Landmark;
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Report;
-
-/**
- * AWS Lambda handler for processing emergency report requests.
- * Manages the creation and retrieval of emergency reports during
- * earthquake response operations.
- *
- * @author Sıla Bozkurt
- */
+import com.seismiq.common.model.User;
+import com.seismiq.common.model.LandmarkCategory;
+import com.seismiq.landmark-service.LandmarkRepository;
+import com.seismiq.common.util.LocalDateTimeAdapter;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,26 +25,29 @@ import java.util.UUID;
  * This class implements AWS Lambda's RequestHandler interface to handle API Gateway events
  * for managing disaster response reports.
  *
- * @author Sıla
+ * @author Sıla Bozkurt
  */
 public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private final ReportRepository reportRepository;
+    private final LandmarkRepository landmarkRepository;
     private final Gson gson;
 
     /**
      * Default constructor that initializes with a new ReportRepository instance.
      */
     public ReportHandler() {
-        this(new ReportRepository());
+        this(new ReportRepository(), new LandmarkRepository());
     }
 
     /**
      * Constructor with dependency injection support for testing.
      * 
      * @param reportRepository The repository implementation for report data operations
+     * @param landmarkRepository The repository implementation for landmark operations
      */
-    public ReportHandler(ReportRepository reportRepository) {
+    public ReportHandler(ReportRepository reportRepository, LandmarkRepository landmarkRepository) {
         this.reportRepository = reportRepository;
+        this.landmarkRepository = landmarkRepository;
         this.gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
@@ -64,82 +66,122 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
         String path = input.getPath();
         String httpMethod = input.getHttpMethod();
 
-        return switch (path) {
-            case "/reports" -> switch (httpMethod) {
-                case "POST" -> createReport(input);
-                case "GET" -> listReports(input);
-                default -> notFound();
-            };
-            
-            default -> {
-                if (path.matches("/reports/[^/]+")) {
-                    String reportId = path.substring("/reports/".length());
-                    yield switch (httpMethod) {
-                        case "GET" -> getReport(reportId);
-                        case "PUT" -> updateReport(reportId, input);
-                        case "DELETE" -> deleteReport(reportId);
-                        default -> notFound();
-                    };
-                }
-                
-                if (path.matches("/reports/[^/]+/status")) {
-                    String reportId = path.substring("/reports/".length(), path.lastIndexOf("/status"));
-                    yield httpMethod.equals("PUT") ? updateReportStatus(reportId, input) : notFound();
-                }
-                
-                if (path.matches("/reports/[^/]+/location")) {
-                    String reportId = path.substring("/reports/".length(), path.lastIndexOf("/location"));
-                    yield httpMethod.equals("PUT") ? updateReportLocation(reportId, input) : notFound();
-                }
-                
-                if (path.matches("/users/[^/]+/reports")) {
-                    String userId = path.substring("/users/".length(), path.length() - "/reports".length());
-                    yield httpMethod.equals("GET") ? getReportsByUser(userId) : notFound();
-                }
-                
-                if (path.matches("/reports/category/[^/]+")) {
-                    String category = path.substring("/reports/category/".length());
-                    yield httpMethod.equals("GET") ? getReportsByCategory(category) : notFound();
-                }
-                
-                if (path.matches("/reports/status/[^/]+")) {
-                    String status = path.substring("/reports/status/".length());
-                    yield httpMethod.equals("GET") ? getReportsByStatus(status) : notFound();
-                }
-                
-                yield notFound();
+        if (path.equals("/reports")) {
+            switch (httpMethod) {
+                case "POST":
+                    return createReport(input);
+                case "GET":
+                    return listReports(input);
+                default:
+                    return notFound();
             }
-        };
+        }
+
+        if (path.matches("/reports/[^/]+")) {
+            String reportId = path.substring("/reports/".length());
+            switch (httpMethod) {
+                case "GET":
+                    return getReport(reportId);
+                case "PUT":
+                    return updateReport(reportId, input);
+                case "DELETE":
+                    return deleteReport(reportId);
+                default:
+                    return notFound();
+            }
+        }
+
+        if (path.matches("/reports/[^/]+/status")) {
+            String reportId = path.substring("/reports/".length(), path.lastIndexOf("/status"));
+            return httpMethod.equals("PUT") ? updateReportStatus(reportId, input) : notFound();
+        }
+
+        if (path.matches("/reports/[^/]+/location")) {
+            String reportId = path.substring("/reports/".length(), path.lastIndexOf("/location"));
+            return httpMethod.equals("PUT") ? updateReportLocation(reportId, input) : notFound();
+        }
+
+        if (path.matches("/users/[^/]+/reports")) {
+            String userId = path.substring("/users/".length(), path.length() - "/reports".length());
+            return httpMethod.equals("GET") ? getReportsByUser(userId) : notFound();
+        }
+
+        if (path.matches("/reports/category/[^/]+")) {
+            String category = path.substring("/reports/category/".length());
+            return httpMethod.equals("GET") ? getReportsByCategory(category) : notFound();
+        }
+
+        if (path.matches("/reports/status/[^/]+")) {
+            String status = path.substring("/reports/status/".length());
+            return httpMethod.equals("GET") ? getReportsByStatus(status) : notFound();
+        }
+
+        return notFound();
     }
 
     /**
      * Creates a new report in the system.
      * Processes POST requests to /reports endpoint.
+     * Parses the request body to extract:
+     * - categoryType (used to create a Category with a unique UUID)
+     * - user (parsed into a User object)
+     * - description, location, and currentLocation fields
+     * 
+     * Initializes reportId, status, and timestamp automatically.
+     * Saves the report in the repository.
      * 
      * @param input API Gateway request containing the report data in JSON format
      * @return 201 Created on success with the created report
-     *         400 Bad Request if the input is invalid
+     *         400 Bad Request if required fields are missing or JSON is invalid
      */
     private APIGatewayProxyResponseEvent createReport(APIGatewayProxyRequestEvent input) {
         try {
-            Report report = gson.fromJson(input.getBody(), Report.class);
-            report.setReportId(UUID.randomUUID().toString());
+            Map<String, Object> bodyMap = gson.fromJson(input.getBody(), Map.class);
+
+            String categoryType = (String) bodyMap.get("categoryType");
+            if (categoryType == null) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(400)
+                        .withBody("Category type is required");
+            }
+            Category category = new Category(UUID.randomUUID().toString(), categoryType);
+
+            Object userObj = bodyMap.get("user");
+            if (userObj == null) {
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(400)
+                        .withBody("User data is required");
+            }
+            User user = gson.fromJson(gson.toJson(userObj), User.class);
+
+            Report report = new Report();
+            report.setReportId(UUID.randomUUID().toString()); // Assign unique report ID
+            report.setUser(user); // Set the user
+            report.setCategory(category); // Set the category
+            report.setDescription((String) bodyMap.get("description")); // Set description
+            report.setLocation((String) bodyMap.get("location")); // Set location
+
+            Object currentLocationObj = bodyMap.get("currentLocation");
+            report.setCurrentLocation(currentLocationObj != null && Boolean.parseBoolean(currentLocationObj.toString()));
+
             report.setStatus(Report.ReportStatus.PENDING);
             report.setTimestamp(LocalDateTime.now());
 
             reportRepository.createReport(report);
+            createLandmarkFromReport(report);
 
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(201)
-                .withBody(gson.toJson(report));
+                    .withStatusCode(201)
+                    .withBody(gson.toJson(report));
+
         } catch (JsonSyntaxException e) {
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(400)
-                .withBody("Invalid report format: " + e.getMessage());
+                    .withStatusCode(400)
+                    .withBody("Invalid report format: " + e.getMessage());
         } catch (IllegalArgumentException e) {
             return new APIGatewayProxyResponseEvent()
-                .withStatusCode(400)
-                .withBody("Invalid report data: " + e.getMessage());
+                    .withStatusCode(400)
+                    .withBody("Invalid report data: " + e.getMessage());
         }
     }
 
@@ -343,8 +385,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
      */
     private APIGatewayProxyResponseEvent getReportsByCategory(String categoryStr) {
         try {
-            Report.ReportCategory reportCategory = Report.ReportCategory.valueOf(categoryStr.toUpperCase());
-            List<Report> reports = reportRepository.getReportsByCategory(reportCategory);
+            List<Report> reports = reportRepository.getReportsByCategory(categoryStr);
             
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(200)
@@ -474,5 +515,59 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
         return new APIGatewayProxyResponseEvent()
             .withStatusCode(404)
             .withBody("Not Found");
+    }
+    private void createLandmarkFromReport(Report report) {
+        if (report.getCategory() == Report.ReportCategory.SHELTER ||
+            report.getCategory() == Report.ReportCategory.MEDICAL_HELP ||
+            report.getCategory() == Report.ReportCategory.FOOD_WATER) {
+            
+            // Create request payload
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("name", "Emergency " + report.getCategory().name());
+            payload.put("location", report.getLocation());
+            payload.put("category", convertReportCategoryToLandmarkCategory(report.getCategory()));
+            payload.put("reportId", report.getReportId());
+            payload.put("userId", report.getUser().getUserId());
+            payload.put("latitude", report.getLatitude());
+            payload.put("longitude", report.getLongitude());
+            
+            // Invoke Lambda function
+            invokeLandmarkLambda(payload);
+        }
+    }
+
+    private void invokeLandmarkLambda(Map<String, Object> payload) {
+        try {
+            // Get the Lambda function name from environment variable
+            String functionName = System.getenv("LANDMARK_FUNCTION_NAME");
+            if (functionName == null) {
+                functionName = "seismiq-LandmarkFunction";
+            }
+            
+            // Create Lambda client
+            AWSLambda lambdaClient = AWSLambdaClientBuilder.standard().build();
+            
+            // Convert payload to JSON
+            String payloadJson = new Gson().toJson(payload);
+            
+            // Invoke Lambda function
+            InvokeRequest request = new InvokeRequest()
+                .withFunctionName(functionName)
+                .withPayload(payloadJson);
+            
+            lambdaClient.invoke(request);
+        } catch (Exception e) {
+            // Log error but don't fail the report creation
+            System.err.println("Failed to create landmark: " + e.getMessage());
+        }
+    }
+
+    private Landmark.LandmarkCategory convertReportCategoryToLandmarkCategory(Report.ReportCategory category) {
+        return switch (category) {
+            case SHELTER -> Landmark.LandmarkCategory.SHELTER;
+            case MEDICAL_HELP -> Landmark.LandmarkCategory.MEDICAL_STATION;
+            case FOOD_WATER -> Landmark.LandmarkCategory.FOOD_DISTRIBUTION;
+            default -> Landmark.LandmarkCategory.OTHER;
+        };
     }
 }

@@ -1,6 +1,9 @@
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\Earthquake.java
+C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\Landmark.java
+C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\LandmarkCategory.java
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\PriorityZone.java
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\Report.java
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\model\User.java
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\repository\DynamoDBRepository.java
+C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\service\NotificationService.java
 C:\Users\Sıla\Documents\GitHub\SeismIQ\seismiq-backend\common-lib\src\main\java\com\seismiq\common\util\LocalDateTimeAdapter.java

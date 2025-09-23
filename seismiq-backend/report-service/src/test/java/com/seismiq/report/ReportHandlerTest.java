@@ -15,6 +15,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Report;
 import com.seismiq.common.model.User;
 import java.time.LocalDateTime;
@@ -48,7 +49,7 @@ class ReportHandlerTest {
         User user = new User("test-user", "Test User", "Test Address", true, false);
         Report report = new Report();
         report.setUser(user);
-        report.setCategory(Report.ReportCategory.MEDICAL_HELP);
+        report.setCategory(new Category(UUID.randomUUID().toString(), "medical"));
         report.setDescription("Test medical help needed");
         report.setLocation("Test Location");
         report.setCurrentLocation(true);
@@ -90,7 +91,7 @@ class ReportHandlerTest {
         Report report = new Report();
         report.setReportId(reportId);
         report.setUser(user);
-        report.setCategory(Report.ReportCategory.MEDICAL_HELP);
+        report.setCategory(new Category(UUID.randomUUID().toString(), "medical"));
         report.setDescription("Test medical help needed");
         report.setLocation("Test Location");
         report.setCurrentLocation(true);
@@ -125,7 +126,7 @@ class ReportHandlerTest {
         Report report = new Report();
         report.setReportId(reportId);
         report.setUser(user);
-        report.setCategory(Report.ReportCategory.MEDICAL_HELP);
+        report.setCategory(new Category(UUID.randomUUID().toString(), "medical"));
         report.setDescription("Test medical help needed");
         report.setLocation("Test Location");
         report.setCurrentLocation(true);

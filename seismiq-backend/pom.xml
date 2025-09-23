@@ -14,6 +14,7 @@
         <module>user-service</module>
         <module>report-service</module>
         <module>earthquake-service</module>
+        <module>landmark-service</module>
     </modules>
 
     <properties>
@@ -21,7 +22,7 @@
     <aws.sdk.version>2.25.24</aws.sdk.version>
     <aws.lambda.core.version>2.2.1</aws.lambda.core.version>
     <lombok.version>1.18.32</lombok.version>
-    <gson.version>2.11.0</gson.version>
+    <gson.version>2.10.1</gson.version>
     <!-- Maven Shade plug-in’in final JAR adını kontrol etmek istersen burada tanımlayabilirsin -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -54,6 +55,17 @@
           <artifactId>dynamodb</artifactId>
           <version>2.22.13</version>
       </dependency>
+
+        <dependency>
+            <groupId>ch.hsr</groupId>
+            <artifactId>geohash</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sns</artifactId>
+            <version>2.20.160</version>
+        </dependency>
     </dependencies>
   </dependencyManagement>
 
