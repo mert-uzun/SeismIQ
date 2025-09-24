@@ -79,6 +79,7 @@ def lambda_handler(event, context):
             "user": user,
             "hashtags": hashtags,
             "ttl": ten_years_from_now # Delete the data after 10 years of its entry
+            "gpt_processed": False
         })
 
         realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)

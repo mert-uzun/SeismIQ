@@ -2,6 +2,7 @@ import re
 import string
 import jpype
 import boto3
+from boto3.dynamodb.conditions import Attr
 import jpype.imports
 from jpype.types import JString
 import spacy
@@ -9,6 +10,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from Tweet_preprocessingv2 import collapse_elongations, word_count_filter
 
+MAX_BATCH_SIZE = 500
 # =============================== CLEANING =============================== #
 banned_keywords = [
     "suriyeli", "allah aşk", "allah ra", "allah yar", "allahtan",
@@ -189,11 +191,10 @@ def preprocess_tweet(tweet_raw_content: str) -> dict:
     lemmatized = lemmatize(normalized)
     stopwords_removed = remove_stopwods(lemmatized)
     tokens = tokenize(stopwords_removed)    
-    features = extract_features_with_gpt(stopwords_removed)
 
     return {
         "preprocessed_text": stopwords_removed,
-        "tokens": tokens,
+        "tokens": tokens
         "features": features,
         "raw_content": tweet_raw_content
     }
@@ -412,13 +413,48 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def extract_features_with_gpt(preprocessed_text: str) -> dict:
+def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> list[list[str]]:
+    try:
+        last_batched_tweet_id = last_batched_tweet_table.get_item(Key={"tracker_id": "last_batched_tweet_id"}).get("Item", {}).get("value")
+    except Exception:
+        last_batched_tweet_id = None
+
+    scan_kwargs = {
+        "Limit": MAX_BATCH_SIZE, 
+        "FilterExpression": Attr("gpt_processed").eq(False),
+        "ProjectionExpression": "tweet_id, text, processed_data"
+    }
+    
+    if last_batched_tweet_id:
+        scan_kwargs["ExclusiveStartKey"] = {"tweet_id": last_batched_tweet_id}
+
+    response = source_table.scan(**scan_kwargs)
+
+    tweets = response.get("Items", [])
+
+    if not tweets:
+        return [[], []]
+
+    preprocessed_batch = [[item["tweet_id"] for item in tweets], [item["processed_data"]["preprocessed_text"] for item in tweets]]
+     
+    last_evaluated_key = response.get("LastEvaluatedKey", None)
+    if last_evaluated_key:
+        update_last_batched_tweet_id(last_batched_tweet_table, last_evaluated_key.get("tweet_id"))
+    else:
+        print("All tweets processed.")
+
+    return preprocessed_batch
+
+def update_last_batched_tweet_id(last_batched_tweet_table: boto3.dynamodb.table.Table, value: str):
+    last_batched_tweet_table.put_item(Item={"tracker_id": "last_batched_tweet_id", "value": value})
+
+def batch_extract_features_with_gpt(preprocessed_batch: list[list[str]]) -> list[dict]:
 # GPT2 EMBEDDINGS AND TF-IDF FEAURES CAN BE MERGED AND REPLACE THIS FUNCTION
-    if check_location_via_spacy(preprocessed_text):
+    if check_location_via_spacy(preprocessed_batch):
         prompt = """
-            I have analyzed a tweet and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
-            Now, I want you to analyze this key words and phrases that are left in Turkish tweet for earthquake disaster response. Extract emergency-related features and 
-            return ONLY a JSON object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
+            I have analyzed a batch of 400 tweets and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
+            Now, I want you to analyze this key words and phrases that are left in Turkish tweet for earthquake disaster response. Analyze all tweets in the batch, extract emergency-related features and 
+            return a JSON array with 400 objects, each object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
 
             {
             "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
@@ -432,13 +468,16 @@ def extract_features_with_gpt(preprocessed_text: str) -> dict:
             "contact_info": identify if present, else null
             }
 
-            Tweet: "{tweet_text}"
+            Tweets: {preprocessed_batch}
+
+            Return format: [{"tweet_id: "...", "emergency_type": "...", "urgency_level": "...", "need_type": "...", "location": "...", "requests": "...", "situation_severity": "...", "time_sensitivity": "...", "contact_info_present": "...", "contact_info": "..."}]
         """
         # NOTE: LOOK UP JSON PARSING // context window
 
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}]
+            temperature=0.1
         )
 
         content = resp.choices[0].message.content
