@@ -42,7 +42,7 @@ public class LandmarkPostFragment extends Fragment implements OnMapReadyCallback
     private GoogleMap googleMap;
     private TextView textViewLatitude, textViewLongitude;
     private Spinner spinnerCategory;
-    private EditText editTextDescription;
+    private EditText editTextName, editTextDescription;
     private Button buttonSubmit;
     private ProgressBar progressBar;
     private AuthService authService;
@@ -55,17 +55,18 @@ public class LandmarkPostFragment extends Fragment implements OnMapReadyCallback
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentLandmarkPostBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
-        
+
         authService = new AuthService();
-        
+
         // Initialize UI components
         textViewLatitude = binding.textViewLatitude;
         textViewLongitude = binding.textViewLongitude;
         spinnerCategory = binding.spinnerLandmarkCategory;
-        editTextDescription = binding.editTextLandmarkDescription;
+        editTextName = binding.etLandmarkName;
+        editTextDescription = binding.etLandmarkDescription;
         buttonSubmit = binding.buttonSubmitLandmark;
         progressBar = binding.progressBarLandmark;
-        
+
         // Set up the category spinner
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 getContext(),
@@ -73,86 +74,83 @@ public class LandmarkPostFragment extends Fragment implements OnMapReadyCallback
                 android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerCategory.setAdapter(adapter);
-        
+
         // Get the SupportMapFragment and request notification when map is ready
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.landmarkMapFragment);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
-        
+
         // Set submit button click listener
         buttonSubmit.setOnClickListener(v -> submitLandmark());
-        
+
         return root;
     }
 
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map;
-        
+
         // Set map UI settings
         googleMap.getUiSettings().setZoomControlsEnabled(true);
         googleMap.getUiSettings().setMyLocationButtonEnabled(true);
-        
+
         // Set initial map position (Turkey as default)
         LatLng turkey = new LatLng(38.9637, 35.2433);
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(turkey, 6));
-        
+
         // Set tap listener for selecting location
         googleMap.setOnMapClickListener(this::updateSelectedLocation);
     }
-    
+
     private void updateSelectedLocation(LatLng latLng) {
-        // Update the selected coordinates
         selectedLatitude = latLng.latitude;
         selectedLongitude = latLng.longitude;
-        
-        // Update the text views
+
         textViewLatitude.setText(String.format(Locale.US, "%.6f", selectedLatitude));
         textViewLongitude.setText(String.format(Locale.US, "%.6f", selectedLongitude));
-        
-        // Update marker on map
+
         if (currentMarker != null) {
             currentMarker.remove();
         }
         currentMarker = googleMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .title("Selected Location"));
-        
-        // Animate camera to the selected position
+
         googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
     }
-    
+
     private void submitLandmark() {
-        // Validate inputs
         if (selectedLatitude == 0 && selectedLongitude == 0) {
             Toast.makeText(getContext(), "Please select a location on the map", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
+        String name = editTextName.getText().toString().trim();
+        if (name.isEmpty()) {
+            Toast.makeText(getContext(), "Please enter a landmark name", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String description = editTextDescription.getText().toString().trim();
         if (description.isEmpty()) {
             Toast.makeText(getContext(), "Please enter a description", Toast.LENGTH_SHORT).show();
             return;
         }
-        
+
         String category = spinnerCategory.getSelectedItem().toString();
-        
-        // Show progress
+
         progressBar.setVisibility(View.VISIBLE);
         buttonSubmit.setEnabled(false);
-        
-        // Create landmark object
-        Landmark landmark = new Landmark(category, description, selectedLatitude, selectedLongitude);
-        
-        // Get auth token and submit
+
+        // Create landmark object using the fixed constructor
+        Landmark landmark = new Landmark(category, description, name, selectedLatitude, selectedLongitude);
+
         authService.getIdToken()
                 .thenAccept(token -> {
-                    // Create API service
                     LandmarkApiService apiService = RetrofitClient.getClient(token)
                             .create(LandmarkApiService.class);
-                    
-                    // Call the API
+
                     apiService.createLandmark(landmark).enqueue(new Callback<Landmark>() {
                         @Override
                         public void onResponse(Call<Landmark> call, Response<Landmark> response) {
@@ -160,10 +158,11 @@ public class LandmarkPostFragment extends Fragment implements OnMapReadyCallback
                                 getActivity().runOnUiThread(() -> {
                                     progressBar.setVisibility(View.GONE);
                                     buttonSubmit.setEnabled(true);
-                                    
+
                                     if (response.isSuccessful() && response.body() != null) {
                                         Toast.makeText(getContext(), "Landmark submitted successfully", Toast.LENGTH_SHORT).show();
                                         // Reset form
+                                        editTextName.setText("");
                                         editTextDescription.setText("");
                                         if (currentMarker != null) {
                                             currentMarker.remove();
