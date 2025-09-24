@@ -426,7 +426,7 @@ def extract_features_with_gpt(preprocessed_text: str) -> dict:
             "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
             "location": city/district/neighborhood/address if present; else null,
             "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
-"            situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+            "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
             "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
             "contact_info_present": boolean,
             "contact_info": identify if present, else null

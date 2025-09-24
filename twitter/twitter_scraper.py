@@ -56,7 +56,7 @@ def lambda_handler(event, context):
             tweet_mode="extended",
             result_type="recent"
         )
-        
+
     # Process and store tweets
     tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
 
