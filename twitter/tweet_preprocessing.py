@@ -413,7 +413,7 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> list[list[str], list[str]]:
+def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> tuple[list[list[str], list[str]], int]:
     try:
         last_batched_tweet_id = last_batched_tweet_table.get_item(Key={"tracker_id": "last_batched_tweet_id"}).get("Item", {}).get("value")
     except Exception:
@@ -433,7 +433,7 @@ def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batche
     tweets = response.get("Items", [])
 
     if not tweets:
-        return [[], []] # first row is tweet_ids, second row is preprocessed text
+        return [[], []], 1 # first row is for tweet_ids and second row is for preprocessed text, 1 means some error occurred
 
     preprocessed_batch = [[item["tweet_id"] for item in tweets], [item["processed_data"]["preprocessed_text"] for item in tweets]]
      
@@ -441,9 +441,9 @@ def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batche
     if last_evaluated_key:
         update_last_batched_tweet_id(last_batched_tweet_table, last_evaluated_key.get("tweet_id"))
     else:
-        print("All tweets processed.")
+        return preprocessed_batch, -1 # -1 means all tweets processed
 
-    return preprocessed_batch
+    return preprocessed_batch, 0 # 0 means some tweets are left to process
 
 def update_last_batched_tweet_id(last_batched_tweet_table: boto3.dynamodb.table.Table, value: str):
     last_batched_tweet_table.put_item(Item={"tracker_id": "last_batched_tweet_id", "value": value})
@@ -534,6 +534,27 @@ def update_database_with_gpt_extracted_features(features_batch: list[dict], sour
         )
         except Exception as e:
             print(f"Error updating the item {tweet_id} with features: {e}")    
+
+def feature_extraction_pipeline(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> dict:
+    preprocessed_batch, exit_code = get_preprocessed_batch(source_table, last_batched_tweet_table)
+    try:
+        while exit_code == 0:
+            gpt_extracted_features = batch_extract_features_with_gpt(preprocessed_batch)
+            update_database_with_gpt_extracted_features(gpt_extracted_features, source_table)
+            preprocessed_batch, exit_code = get_preprocessed_batch(source_table, last_batched_tweet_table)
+    except Exception as e:
+        print(f"Error in feature extraction pipeline: {e}")
+        return {
+            "status": "error",
+            "message": "Error in feature extraction pipeline",
+            "exit_code": 1
+        }
+
+    return {
+        "status": "success",
+        "message": "Pipeline successfully completed",
+        "exit_code": 0
+    }
 
 def check_location_via_spacy(text: str) -> list[str]: 
     """
