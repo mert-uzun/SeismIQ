@@ -194,8 +194,7 @@ def preprocess_tweet(tweet_raw_content: str) -> dict:
 
     return {
         "preprocessed_text": stopwords_removed,
-        "tokens": tokens
-        "features": features,
+        "tokens": tokens,
         "raw_content": tweet_raw_content
     }
 
