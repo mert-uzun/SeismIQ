@@ -29,14 +29,12 @@ public class UserRepository extends DynamoDBRepository {
     public void saveUser(User user) {
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("userId", AttributeValue.builder().s(user.getUserId()).build());
-        item.put("name", AttributeValue.builder().s(user.getName()).build());
-        item.put("address", AttributeValue.builder().s(user.getAddress()).build());
+        item.put("name", AttributeValue.builder().s(user.getName() != null ? user.getName() : "").build());
+        item.put("address", AttributeValue.builder().s(user.getAddress() != null ? user.getAddress() : "").build());
         item.put("isVolunteer", AttributeValue.builder().bool(user.isVolunteer()).build());
         item.put("isSocialWorker", AttributeValue.builder().bool(user.isSocialWorker()).build());
-        if (user.getEmail() != null) 
-            item.put("email", AttributeValue.builder().s(user.getEmail()).build());
-        if (user.getPasswordHash() != null) 
-            item.put("passwordHash", AttributeValue.builder().s(user.getPasswordHash()).build());
+        item.put("email", AttributeValue.builder().s(user.getEmail() != null ? user.getEmail() : "").build());
+        item.put("passwordHash", AttributeValue.builder().s(user.getPasswordHash() != null ? user.getPasswordHash() : "").build());
         putItem(item);
     }
 
