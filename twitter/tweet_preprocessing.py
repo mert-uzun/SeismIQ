@@ -503,6 +503,37 @@ def batch_extract_features_with_gpt(preprocessed_batch: list[list[str], list[str
     
     return result
 
+def update_database_with_gpt_extracted_features(features_batch: list[dict], source_table: boto3.dynamodb.table.Table):
+    """
+        Updates the database with gpt-extracted features using batch_writer of DynamoDB.
+    """
+    for item in features_batch:
+        tweet_id = item.get("tweet_id", None)
+
+        if not tweet_id:
+            continue
+
+        try:
+            source_table.update_item(
+            Key={"tweet_id": tweet_id},
+            UpdateExpression="SET gpt_processed = :gpt_processed, processed_data.features = :features",
+            ExpressionAttributeValues={
+                ":gpt_processed": True,
+                ":features": {
+                    "emergency_type": item.get("emergency_type", None),
+                    "urgency_level": item.get("urgency_level", None),
+                    "need_type": item.get("need_type", None),
+                    "location": item.get("location", None),
+                    "requests": item.get("requests", None),
+                    "situation_severity": item.get("situation_severity", None),
+                    "time_sensitivity": item.get("time_sensitivity", None),
+                    "contact_info_present": item.get("contact_info_present", None),
+                    "contact_info": item.get("contact_info", None)
+                }
+            }
+        )
+        except Exception as e:
+            print(f"Error updating the item {tweet_id} with features: {e}")    
 
 def check_location_via_spacy(text: str) -> list[str]: 
     """
