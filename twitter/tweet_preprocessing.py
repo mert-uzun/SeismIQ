@@ -2,6 +2,7 @@ import re
 import string
 import jpype
 import boto3
+from boto3.dynamodb.conditions import Attr
 import jpype.imports
 from jpype.types import JString
 import spacy
@@ -9,6 +10,7 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from Tweet_preprocessingv2 import collapse_elongations, word_count_filter
 
+MAX_BATCH_SIZE = 500
 # =============================== CLEANING =============================== #
 banned_keywords = [
     "suriyeli", "allah aşk", "allah ra", "allah yar", "allahtan",
@@ -189,12 +191,10 @@ def preprocess_tweet(tweet_raw_content: str) -> dict:
     lemmatized = lemmatize(normalized)
     stopwords_removed = remove_stopwods(lemmatized)
     tokens = tokenize(stopwords_removed)    
-    features = extract_features_with_gpt(stopwords_removed)
 
     return {
         "preprocessed_text": stopwords_removed,
         "tokens": tokens,
-        "features": features,
         "raw_content": tweet_raw_content
     }
 
@@ -412,48 +412,159 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def extract_features_with_gpt(preprocessed_text: str) -> dict:
+def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> tuple[list[list[str], list[str]], int]:
+    try:
+        last_batched_tweet_id = last_batched_tweet_table.get_item(Key={"tracker_id": "last_batched_tweet_id"}).get("Item", {}).get("value")
+    except Exception:
+        last_batched_tweet_id = None
+
+    scan_kwargs = {
+        "Limit": MAX_BATCH_SIZE, 
+        "FilterExpression": Attr("gpt_processed").eq(False),
+        "ProjectionExpression": "tweet_id, text, processed_data"
+    }
+    
+    if last_batched_tweet_id:
+        scan_kwargs["ExclusiveStartKey"] = {"tweet_id": last_batched_tweet_id}
+
+    response = source_table.scan(**scan_kwargs)
+
+    tweets = response.get("Items", [])
+
+    if not tweets:
+        return [[], []], 1 # first row is for tweet_ids and second row is for preprocessed text, 1 means some error occurred
+
+    preprocessed_batch = [[item["tweet_id"] for item in tweets], [item["processed_data"]["preprocessed_text"] for item in tweets]]
+     
+    last_evaluated_key = response.get("LastEvaluatedKey", None) # LastEvaluatedKey exists only if the table's end is not reached.
+    if last_evaluated_key:
+        update_last_batched_tweet_id(last_batched_tweet_table, last_evaluated_key.get("tweet_id"))
+    else:
+        return preprocessed_batch, -1 # -1 means all tweets processed
+
+    return preprocessed_batch, 0 # 0 means some tweets are left to process
+
+def update_last_batched_tweet_id(last_batched_tweet_table: boto3.dynamodb.table.Table, value: str):
+    last_batched_tweet_table.put_item(Item={"tracker_id": "last_batched_tweet_id", "value": value})
+
+def batch_extract_features_with_gpt(preprocessed_batch: list[list[str], list[str]]) -> list[dict]:
 # GPT2 EMBEDDINGS AND TF-IDF FEAURES CAN BE MERGED AND REPLACE THIS FUNCTION
-    if check_location_via_spacy(preprocessed_text):
-        prompt = """
-            I have analyzed a tweet and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
-            Now, I want you to analyze this key words and phrases that are left in Turkish tweet for earthquake disaster response. Extract emergency-related features and 
-            return ONLY a JSON object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
+    preprocessed_batch_size = len(preprocessed_batch[0])
 
-            {
-            "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
-            "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
-            "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
-            "location": city/district/neighborhood/address if present; else null,
-            "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
-"            situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
-            "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
-            "contact_info_present": boolean,
-            "contact_info": identify if present, else null
-            }
+    formatted_tweets = "".join([f"Tweet ID: {tweet_id} | Preprocessed Text: {preprocessed_text}\n" for tweet_id, preprocessed_text in zip(preprocessed_batch[0], preprocessed_batch[1])])
 
-            Tweet: "{tweet_text}"
-        """
-        # NOTE: LOOK UP JSON PARSING // context window
+    prompt = f"""
+        I have analyzed a batch of {preprocessed_batch_size} tweets and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
+        I am passing you a list of tweets with their corresponding tweet_ids, don't miss or misinterpret any tweet.
+        Now, I want you to analyze these key words and phrases that are left in Turkish tweet for earthquake disaster response. Analyze all tweets in the batch, extract emergency-related features and 
+        return a JSON object with a "results" key that contains an array of {preprocessed_batch_size} objects, each object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
 
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        {{
+        "tweet_id": the tweet_id corresponding to the preprocessed text,
+        "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
+        "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
+        "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
+        "location": city/district/neighborhood/address if present; else null,
+        "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
+        "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+        "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
+        "contact_info_present": boolean,
+        "contact_info": identify if present, else null
+        }}
+ 
+        Tweets: 
+        {formatted_tweets}
 
-        content = resp.choices[0].message.content
+        Return exactly this JSON format: {preprocessed_batch_size} objects as a JSON object with a "results" key that contains an array of objects.
+        For example:
+        {{"results": [                                                                                              
+            {"tweet_id": "123", "emergency_type": "medical_aid", ...},
+            {"tweet_id": "456", "emergency_type": "supply_call", ...},
+            {"tweet_id": "789", "emergency_type": "none", ...}
+        ]}}
+    """
+
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        response_format={"type": "json_object"}
+    )
+
+    content = resp.choices[0].message.content
+
+    try:
+        result = json.loads(content).get("results")
+    except Exception as e:
+        print(f"Error parsing GPT response: {e}")
+        print(f"GPT response: {content}")
+        return []
+    
+    return result
+
+def update_database_with_gpt_extracted_features(features_batch: list[dict], source_table: boto3.dynamodb.table.Table):
+    """
+        Updates the database with gpt-extracted features using batch_writer of DynamoDB.
+    """
+    for item in features_batch:
+        tweet_id = item.get("tweet_id", None)
+
+        if not tweet_id:
+            continue
 
         try:
-            data = json.loads(content)
-            if isinstance(data, dict):
-                return data
-        except Exception:
-            print(Exception, content)
-        return {}
-    else:
-        return {} # if location is not mentioned, return empty dict (skip the tweet)
+            source_table.update_item(
+            Key={"tweet_id": tweet_id},
+            UpdateExpression="SET gpt_processed = :gpt_processed, processed_data.features = :features",
+            ExpressionAttributeValues={
+                ":gpt_processed": True,
+                ":features": {
+                    "emergency_type": item.get("emergency_type", None),
+                    "urgency_level": item.get("urgency_level", None),
+                    "need_type": item.get("need_type", None),
+                    "location": item.get("location", None),
+                    "requests": item.get("requests", None),
+                    "situation_severity": item.get("situation_severity", None),
+                    "time_sensitivity": item.get("time_sensitivity", None),
+                    "contact_info_present": item.get("contact_info_present", None),
+                    "contact_info": item.get("contact_info", None)
+                }
+            }
+        )
+        except Exception as e:
+            print(f"Error updating the item {tweet_id} with features: {e}")    
 
-def check_location_via_spacy(text: str) -> list[str]:
+def feature_extraction_pipeline(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> dict:
+    preprocessed_batch, exit_code = get_preprocessed_batch(source_table, last_batched_tweet_table)
+    try:
+        while exit_code == 0:
+            gpt_extracted_features = batch_extract_features_with_gpt(preprocessed_batch)
+            update_database_with_gpt_extracted_features(gpt_extracted_features, source_table)
+            preprocessed_batch, exit_code = get_preprocessed_batch(source_table, last_batched_tweet_table)
+    except Exception as e:
+        print(f"Error in feature extraction pipeline: {e}")
+        return {
+            "status": "error",
+            "message": "Error in feature extraction pipeline",
+            "exit_code": 1
+        }
+
+    return {
+        "status": "success",
+        "message": "Pipeline successfully completed",
+        "exit_code": 0
+    }
+
+def check_location_via_spacy(text: str) -> list[str]: 
+    """
+        Checks if the text contains a location via SpaCy.
+        Returns a list of locations.
+
+        **************************************************************************************************************************
+        WE DON'T NEED THIS FUNCTION ANYMORE SINCE WITH BATCH PROCESSING IT TAKES MORE 
+        TIME TO CHECK EACH OF THEM WITH SPACY THAN TO JUST BATCH PROCESS THEM WITH GPT
+        **************************************************************************************************************************
+    """
     doc = nlp(text)
     return [ent.text for ent in doc.ents if ent.label_ == "LOC"]
 

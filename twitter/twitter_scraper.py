@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets
+from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets, feature_extraction_pipeline
 from kandilli_scrape import handle_earthquake_data, get_the_twitter_query, get_quake_settlement_and_S_value_data
 import tweepy
 import datetime
@@ -22,6 +22,7 @@ api = tweepy.API(auth)
 dynamodb = boto3.resource("dynamodb")
 tweets_table = dynamodb.Table(os.environ["TWEETS_TABLE_NAME"])
 last_seen_table = dynamodb.Table(os.environ["LAST_SEEN_TABLE_NAME"])
+last_batched_tweet_table = dynamodb.Table(os.environ["LAST_BATCHED_TWEET_TABLE_NAME"])
 earthquakes_table = dynamodb.Table(os.environ["EARTHQUAKES_TABLE_NAME"])
 
 # Kandilli Earthquake Research Institute URL
@@ -56,7 +57,7 @@ def lambda_handler(event, context):
             tweet_mode="extended",
             result_type="recent"
         )
-        
+
     # Process and store tweets
     tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
 
@@ -78,7 +79,8 @@ def lambda_handler(event, context):
             "created_at": str(created_at),
             "user": user,
             "hashtags": hashtags,
-            "ttl": ten_years_from_now # Delete the data after 10 years of its entry
+            "ttl": ten_years_from_now, # Delete the data after 10 years of its entry
+            "gpt_processed": False
         })
 
         realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)
@@ -87,6 +89,12 @@ def lambda_handler(event, context):
     if tweets:
         update_last_seen_id(last_seen_table, tweets[0].id_str) # since_id is the id of the newest tweet system got from the last search
 
+    # Start feature extraction pipeline
+    try:
+        response = feature_extraction_pipeline(tweets_table, last_batched_tweet_table)
+    except Exception as e:
+        print(f"Error in feature extraction pipeline: {e}, response: {response if response else 'NaN'}")
+        
     return {"statusCode": 200, "body": "Success"}
 
 def get_last_seen_id(table) -> str:
