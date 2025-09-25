@@ -413,7 +413,7 @@ load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> list[list[str]]:
+def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batched_tweet_table: boto3.dynamodb.table.Table) -> list[list[str], list[str]]:
     try:
         last_batched_tweet_id = last_batched_tweet_table.get_item(Key={"tracker_id": "last_batched_tweet_id"}).get("Item", {}).get("value")
     except Exception:
@@ -433,11 +433,11 @@ def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batche
     tweets = response.get("Items", [])
 
     if not tweets:
-        return [[], []]
+        return [[], []] # first row is tweet_ids, second row is preprocessed text
 
     preprocessed_batch = [[item["tweet_id"] for item in tweets], [item["processed_data"]["preprocessed_text"] for item in tweets]]
      
-    last_evaluated_key = response.get("LastEvaluatedKey", None)
+    last_evaluated_key = response.get("LastEvaluatedKey", None) # LastEvaluatedKey exists only if the table's end is not reached.
     if last_evaluated_key:
         update_last_batched_tweet_id(last_batched_tweet_table, last_evaluated_key.get("tweet_id"))
     else:
@@ -448,51 +448,72 @@ def get_preprocessed_batch(source_table: boto3.dynamodb.table.Table, last_batche
 def update_last_batched_tweet_id(last_batched_tweet_table: boto3.dynamodb.table.Table, value: str):
     last_batched_tweet_table.put_item(Item={"tracker_id": "last_batched_tweet_id", "value": value})
 
-def batch_extract_features_with_gpt(preprocessed_batch: list[list[str]]) -> list[dict]:
+def batch_extract_features_with_gpt(preprocessed_batch: list[list[str], list[str]]) -> list[dict]:
 # GPT2 EMBEDDINGS AND TF-IDF FEAURES CAN BE MERGED AND REPLACE THIS FUNCTION
-    if check_location_via_spacy(preprocessed_batch):
-        prompt = """
-            I have analyzed a batch of 400 tweets and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
-            Now, I want you to analyze this key words and phrases that are left in Turkish tweet for earthquake disaster response. Analyze all tweets in the batch, extract emergency-related features and 
-            return a JSON array with 400 objects, each object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
+    preprocessed_batch_size = len(preprocessed_batch[0])
 
-            {
-            "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
-            "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
-            "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
-            "location": city/district/neighborhood/address if present; else null,
-            "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
-            "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
-            "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
-            "contact_info_present": boolean,
-            "contact_info": identify if present, else null
-            }
+    formatted_tweets = "".join([f"Tweet ID: {tweet_id} | Preprocessed Text: {preprocessed_text}\n" for tweet_id, preprocessed_text in zip(preprocessed_batch[0], preprocessed_batch[1])])
 
-            Tweets: {preprocessed_batch}
+    prompt = f"""
+        I have analyzed a batch of {preprocessed_batch_size} tweets and removed the stopwords, normalized the text, lemmatized the words, stemmed the words, removed the hashtags and links. 
+        I am passing you a list of tweets with their corresponding tweet_ids, don't miss or misinterpret any tweet.
+        Now, I want you to analyze these key words and phrases that are left in Turkish tweet for earthquake disaster response. Analyze all tweets in the batch, extract emergency-related features and 
+        return a JSON object with a "results" key that contains an array of {preprocessed_batch_size} objects, each object with these fields, without any explanations. Be as specific as possible, and do not miss any information. Try your best to be accurate:
 
-            Return format: [{"tweet_id: "...", "emergency_type": "...", "urgency_level": "...", "need_type": "...", "location": "...", "requests": "...", "situation_severity": "...", "time_sensitivity": "...", "contact_info_present": "...", "contact_info": "..."}]
-        """
-        # NOTE: LOOK UP JSON PARSING // context window
+        {{
+        "tweet_id": the tweet_id corresponding to the preprocessed text,
+        "emergency_type": one of ["medical_aid", "supply_call", "rescue_call", "danger_notice", "none"] if you are not completely sure about the type, return "none",
+        "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
+        "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
+        "location": city/district/neighborhood/address if present; else null,
+        "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
+        "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
+        "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
+        "contact_info_present": boolean,
+        "contact_info": identify if present, else null
+        }}
+ 
+        Tweets: 
+        {formatted_tweets}
 
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-            temperature=0.1
-        )
+        Return exactly this JSON format: {preprocessed_batch_size} objects as a JSON object with a "results" key that contains an array of objects.
+        For example:
+        {{"results": [                                                                                              
+            {"tweet_id": "123", "emergency_type": "medical_aid", ...},
+            {"tweet_id": "456", "emergency_type": "supply_call", ...},
+            {"tweet_id": "789", "emergency_type": "none", ...}
+        ]}}
+    """
 
-        content = resp.choices[0].message.content
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+        response_format={"type": "json_object"}
+    )
 
-        try:
-            data = json.loads(content)
-            if isinstance(data, dict):
-                return data
-        except Exception:
-            print(Exception, content)
-        return {}
-    else:
-        return {} # if location is not mentioned, return empty dict (skip the tweet)
+    content = resp.choices[0].message.content
 
-def check_location_via_spacy(text: str) -> list[str]:
+    try:
+        result = json.loads(content).get("results")
+    except Exception as e:
+        print(f"Error parsing GPT response: {e}")
+        print(f"GPT response: {content}")
+        return []
+    
+    return result
+
+
+def check_location_via_spacy(text: str) -> list[str]: 
+    """
+        Checks if the text contains a location via SpaCy.
+        Returns a list of locations.
+
+        **************************************************************************************************************************
+        WE DON'T NEED THIS FUNCTION ANYMORE SINCE WITH BATCH PROCESSING IT TAKES MORE 
+        TIME TO CHECK EACH OF THEM WITH SPACY THAN TO JUST BATCH PROCESS THEM WITH GPT
+        **************************************************************************************************************************
+    """
     doc = nlp(text)
     return [ent.text for ent in doc.ents if ent.label_ == "LOC"]
 
