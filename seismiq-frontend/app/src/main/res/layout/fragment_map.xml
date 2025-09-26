@@ -6,14 +6,42 @@
     android:layout_height="match_parent">
 
     <fragment
-        android:id="@+id/mapFragment"
+        android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggle_map_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:singleSelection="true"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_margin="16dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_earthquakes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Earthquakes" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_landmarks"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Landmarks" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="All" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <ProgressBar
         android:id="@+id/progressBarMap"
