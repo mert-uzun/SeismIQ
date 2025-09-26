@@ -69,10 +69,7 @@ def lambda_handler(event, context):
         hashtags = [hashtag["text"] for hashtag in tweet.entities.get("hashtags", [])]
         ten_years_from_now = int(time.time()) + 10 * 365 * 24 * 60 * 60
 
-        if tweets_table.get_item(Key={"tweet_id": tweet_id}).get("Item", {}).get("processed_data", {}).get("clean_text", "") == "":
-            continue # skip the tweet if it has an empty clean_text, meaning it has been filtered out by the cleaning pipeline
-
-        tweets_table.put_item(Item={
+        tweet_json = {
             "tweet_id": tweet_id,
             "text": text,
             "processed_data": preprocess_tweet(text),
@@ -81,7 +78,12 @@ def lambda_handler(event, context):
             "hashtags": hashtags,
             "ttl": ten_years_from_now, # Delete the data after 10 years of its entry
             "gpt_processed": False
-        })
+        }
+
+        if tweet_json.get("processed_data", {}).get("preprocessed_text", "") == "":
+            continue # skip the tweet if it has an empty clean_text, meaning it has been filtered out by the cleaning pipeline
+
+        tweets_table.put_item(Item=tweet_json)
 
         realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)
 
