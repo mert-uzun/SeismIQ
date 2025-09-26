@@ -17,6 +17,7 @@ Globals:
           Ref: MobilePushPlatformApplicationArn
         REGION:
           Ref: AWS::Region
+        AWS_SAM_LOCAL: "true"
 
 Resources:
   SeismiqApi:

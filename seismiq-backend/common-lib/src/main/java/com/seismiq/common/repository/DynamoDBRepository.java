@@ -2,7 +2,9 @@ package com.seismiq.common.repository;
 
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.services.dynamodb.model.*;
+import java.net.URI;
 import java.util.Map;
 
 /**
@@ -18,9 +20,26 @@ public abstract class DynamoDBRepository {
 
     protected DynamoDBRepository(String tableName) {
         this.tableName = tableName;
-        this.dynamoDbClient = DynamoDbClient.builder()
-                .region(Region.of(System.getenv("AWS_REGION")))
-                .build();
+        this.dynamoDbClient = createDynamoDbClient();
+    }
+
+    private DynamoDbClient createDynamoDbClient() {
+        DynamoDbClientBuilder builder = DynamoDbClient.builder();
+        
+        // Set region - use environment variable or default to us-east-1
+        String region = System.getenv("AWS_REGION");
+        if (region == null || region.isEmpty()) {
+            region = "us-east-1";
+        }
+        builder.region(Region.of(region));
+        
+        // If running locally (e.g., with SAM local), use local DynamoDB
+        String isLocal = System.getenv("AWS_SAM_LOCAL");
+        if ("true".equals(isLocal)) {
+            builder.endpointOverride(URI.create("http://localhost:8000"));
+        }
+        
+        return builder.build();
     }
 
     protected PutItemResponse putItem(Map<String, AttributeValue> item) {

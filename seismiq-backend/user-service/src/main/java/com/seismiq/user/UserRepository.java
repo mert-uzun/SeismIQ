@@ -6,7 +6,6 @@ import java.util.Map;
 import com.seismiq.common.model.User;
 import com.seismiq.common.repository.DynamoDBRepository;
 
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
@@ -23,7 +22,6 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
  * @author Ayşe Ece Bilgi
  */
 public class UserRepository extends DynamoDBRepository {
-    private final DynamoDbClient dynamoDb = DynamoDbClient.create();
     private static final String USERS_TABLE = "Users";
 
     public UserRepository() {
@@ -102,7 +100,7 @@ public class UserRepository extends DynamoDBRepository {
                 .expressionAttributeValues(expressionValues)
                 .build();
 
-        QueryResponse result = this.dynamoDb.query(queryRequest);
+        QueryResponse result = this.dynamoDbClient.query(queryRequest);
 
         if (result.count() == 0) return null;
 
