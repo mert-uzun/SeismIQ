@@ -136,7 +136,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void loadLandmarks() {
-        landmarkApiService.getAllLandmarks().enqueue(new Callback<List<Landmark>>() {
+        landmarkApiService.getLandmarks().enqueue(new Callback<List<Landmark>>() {
             @Override
             public void onResponse(Call<List<Landmark>> call, Response<List<Landmark>> response) {
                 if (response.isSuccessful() && response.body() != null) {
