@@ -16,8 +16,7 @@ public class LandmarkRepository {
      * Creates a new LandmarkRepository with default DynamoDB client.
      */
     public LandmarkRepository() {
-        this(DynamoDbClient.create(), System.getenv("LANDMARK_TABLE_NAME") != null 
-            ? System.getenv("LANDMARK_TABLE_NAME") : "Landmarks");
+        this(DynamoDbClient.create(), "seismiq-landmarks"); // Use the existing seismiq-landmarks table
     }
 
     /**

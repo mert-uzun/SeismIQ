@@ -33,8 +33,7 @@ public class LandmarkRepository {
 
     public LandmarkRepository() {
         this.dynamoDbClient = DynamoDbClient.builder().build();
-        this.tableName = System.getenv("LANDMARKS_TABLE") != null ? 
-            System.getenv("LANDMARKS_TABLE") : "Landmarks";
+        this.tableName = "seismiq-Landmarks"; // Use CloudFormation managed table
     }
 
     public void saveLandmark(Landmark landmark) {

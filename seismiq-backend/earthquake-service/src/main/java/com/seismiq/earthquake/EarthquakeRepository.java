@@ -8,13 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.seismiq.common.model.Earthquake;
-
-/**
- * Repository class for managing earthquake data in DynamoDB.
- * Handles CRUD operations and specialized queries for earthquake records.
- *
- * @author Sıla Bozkurt
- */
 import com.seismiq.common.repository.DynamoDBRepository;
 
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -24,12 +17,11 @@ import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 public class EarthquakeRepository extends DynamoDBRepository {
-    private static final String EARTHQUAKES_TABLE = "Earthquakes";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
     private static final long SIX_MONTHS_IN_DAYS = 180;
 
     public EarthquakeRepository() {
-        super(EARTHQUAKES_TABLE);
+        super("seismiq-Earthquakes"); // Use CloudFormation managed table
     }
 
     public void saveEarthquake(Earthquake earthquake) {
@@ -64,7 +56,7 @@ public class EarthquakeRepository extends DynamoDBRepository {
         expressionValues.put(":isActive", AttributeValue.builder().bool(true).build());
 
         ScanRequest request = ScanRequest.builder()
-            .tableName(EARTHQUAKES_TABLE)
+            .tableName(this.tableName)
             .filterExpression("isActive = :isActive")
             .expressionAttributeValues(expressionValues)
             .build();
@@ -93,7 +85,7 @@ public class EarthquakeRepository extends DynamoDBRepository {
         expressionValues.put(":isActive", AttributeValue.builder().bool(true).build());
 
         ScanRequest request = ScanRequest.builder()
-            .tableName(EARTHQUAKES_TABLE)
+            .tableName(this.tableName)
             .filterExpression("latitude BETWEEN :minLat AND :maxLat AND longitude BETWEEN :minLon AND :maxLon AND isActive = :isActive")
             .expressionAttributeValues(expressionValues)
             .build();
@@ -117,7 +109,7 @@ public class EarthquakeRepository extends DynamoDBRepository {
         expressionValues.put(":isActive", AttributeValue.builder().bool(true).build());
 
         ScanRequest scanRequest = ScanRequest.builder()
-            .tableName(EARTHQUAKES_TABLE)
+            .tableName(this.tableName)
             .filterExpression("timestamp < :cutoffDate AND isActive = :isActive")
             .expressionAttributeValues(expressionValues)
             .build();
@@ -133,7 +125,7 @@ public class EarthquakeRepository extends DynamoDBRepository {
             updateValues.put(":isActive", AttributeValue.builder().bool(false).build());
 
             UpdateItemRequest updateRequest = UpdateItemRequest.builder()
-                .tableName(EARTHQUAKES_TABLE)
+                .tableName(this.tableName)
                 .key(key)
                 .updateExpression("SET isActive = :isActive")
                 .expressionAttributeValues(updateValues)

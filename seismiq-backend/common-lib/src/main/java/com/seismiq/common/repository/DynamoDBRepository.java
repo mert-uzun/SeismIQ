@@ -26,10 +26,13 @@ public abstract class DynamoDBRepository {
     private DynamoDbClient createDynamoDbClient() {
         DynamoDbClientBuilder builder = DynamoDbClient.builder();
         
-        // Set region - use environment variable or default to us-east-1
-        String region = System.getenv("AWS_REGION");
+        // Set region - use REGION environment variable first, then AWS_REGION, or default to eu-north-1
+        String region = System.getenv("REGION");
         if (region == null || region.isEmpty()) {
-            region = "us-east-1";
+            region = System.getenv("AWS_REGION");
+        }
+        if (region == null || region.isEmpty()) {
+            region = "eu-north-1"; // Default to the correct region
         }
         builder.region(Region.of(region));
         

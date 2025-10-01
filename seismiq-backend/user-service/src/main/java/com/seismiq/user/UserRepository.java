@@ -22,10 +22,8 @@ import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
  * @author Ayşe Ece Bilgi
  */
 public class UserRepository extends DynamoDBRepository {
-    private static final String USERS_TABLE = "Users";
-
     public UserRepository() {
-        super(USERS_TABLE);
+        super("seismiq-Users"); // Use CloudFormation managed table
     }
 
     public void saveUser(User user) {
@@ -94,7 +92,7 @@ public class UserRepository extends DynamoDBRepository {
         expressionValues.put(":email", AttributeValue.builder().s(email).build());
 
         QueryRequest queryRequest = QueryRequest.builder()
-                .tableName(USERS_TABLE)
+                .tableName(this.tableName)
                 .indexName("EmailIndex")
                 .keyConditionExpression("email = :email")
                 .expressionAttributeValues(expressionValues)
