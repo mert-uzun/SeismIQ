@@ -23,6 +23,7 @@ lambda_deps/
 # macOS and Windows system files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Python egg and build files
 *.egg-info/
@@ -36,6 +37,7 @@ build/
 
 # Log files
 *.log
+logs/
 
 # Local test output
 *.out
@@ -130,3 +132,76 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# AWS SAM CLI specific files
+.aws-sam/
+samconfig.toml
+packaged-template.yaml
+packaged.yaml
+
+# Node.js (if using Lambda with Node.js)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python cache and compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+.Python
+
+# Pytest
+.pytest_cache/
+.cache/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# CDK (if using AWS CDK)
+cdk.out/
+cdk.context.json
+
+# Terraform (if using)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# CloudFormation packaged templates
+packaged-template.yml
+packaged-template.yaml
+
+# Lambda layer zip files
+*.zip
+layers/
+
+# SAM local files
+.env.json
+env.json
+event.json
+
+# Runtime logs
+runtime.log
+
+# Serverless Framework (if using)
+.serverless/
