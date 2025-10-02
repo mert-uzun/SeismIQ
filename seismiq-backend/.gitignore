@@ -151,6 +151,10 @@ desktop.ini
 .env
 .env.*
 aws-config.json
+
+# Service account credentials and secrets (NEVER COMMIT THESE!)
+attrs.json
+service.json
 # Test coverage and reports
 coverage/
 .coverage

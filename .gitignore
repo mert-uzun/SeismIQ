@@ -23,6 +23,7 @@ lambda_deps/
 # macOS and Windows system files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Python egg and build files
 *.egg-info/
@@ -36,6 +37,7 @@ build/
 
 # Log files
 *.log
+logs/
 
 # Local test output
 *.out
@@ -66,3 +68,140 @@ htmlcov/
 
 # Zemberek
 twitter/zemberek-full.jar
+
+# Java/Maven/Gradle build and cache files
+# Gradle build and cache files
+.gradle/
+**/build/
+!**/build.gradle
+
+# IntelliJ IDEA/Android Studio project files
+.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+
+# Maven build output
+**/target/
+**/target/*
+
+# AWS SAM build directory
+.aws-sam/
+
+# Build cache and lock files
+**/*.lock
+**/*.bin
+**/*gc.properties
+**/cache.properties
+**/config.properties
+
+# Maven status files
+**/maven-status/
+
+# Service account credentials and secrets
+seismiq-backend/attrs.json
+seismiq-backend/service.json
+
+# Java compiled files
+*.class
+*.jar
+!gradle-wrapper.jar
+!**/gradle-wrapper.jar
+
+# Package files
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Eclipse
+.metadata/
+.settings/
+.classpath
+.project
+.factorypath
+
+# Android specific
+*.apk
+*.aab
+local.properties
+.gradle/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# AWS SAM CLI specific files
+.aws-sam/
+samconfig.toml
+packaged-template.yaml
+packaged.yaml
+
+# Node.js (if using Lambda with Node.js)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python cache and compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+.Python
+
+# Pytest
+.pytest_cache/
+.cache/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# CDK (if using AWS CDK)
+cdk.out/
+cdk.context.json
+
+# Terraform (if using)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# CloudFormation packaged templates
+packaged-template.yml
+packaged-template.yaml
+
+# Lambda layer zip files
+*.zip
+layers/
+
+# SAM local files
+.env.json
+env.json
+event.json
+
+# Runtime logs
+runtime.log
+
+# Serverless Framework (if using)
+.serverless/

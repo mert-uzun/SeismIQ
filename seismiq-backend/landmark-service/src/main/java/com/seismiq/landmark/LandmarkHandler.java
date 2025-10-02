@@ -11,6 +11,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Landmark;
 import com.seismiq.common.util.LocalDateTimeAdapter;
 
@@ -72,11 +73,16 @@ public class LandmarkHandler implements RequestHandler<APIGatewayProxyRequestEve
                 .withStatusCode(200)
                 .withHeaders(getCorsHeaders())
                 .withBody(gson.toJson(landmark));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withHeaders(getCorsHeaders())
+                .withBody("Invalid landmark ID format: " + e.getMessage());
+        } catch (RuntimeException e) {
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(404)
                 .withHeaders(getCorsHeaders())
-                .withBody("Landmark not found");
+                .withBody("Landmark not found: " + e.getMessage());
         }
     }
 
@@ -87,11 +93,16 @@ public class LandmarkHandler implements RequestHandler<APIGatewayProxyRequestEve
                 .withStatusCode(200)
                 .withHeaders(getCorsHeaders())
                 .withBody(gson.toJson(landmarkRepository.listLandmarks(queryParams)));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withHeaders(getCorsHeaders())
+                .withBody("Invalid query parameters: " + e.getMessage());
+        } catch (RuntimeException e) {
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(500)
                 .withHeaders(getCorsHeaders())
-                .withBody("Error retrieving landmarks");
+                .withBody("Error retrieving landmarks: " + e.getMessage());
         }
     }
 
@@ -104,26 +115,123 @@ public class LandmarkHandler implements RequestHandler<APIGatewayProxyRequestEve
                     .withBody("Request body is required");
             }
 
-            Landmark landmark = gson.fromJson(input.getBody(), Landmark.class);
-            
-            // Validate required fields
-            if (landmark.getName() == null || landmark.getName().trim().isEmpty() ||
-                landmark.getLocation() == null || landmark.getLocation().trim().isEmpty() ||
-                landmark.getCategory() == null) {
+            context.getLogger().log("Parsing landmark from body: " + input.getBody());
+            Landmark landmark;
+            try {
+                landmark = gson.fromJson(input.getBody(), Landmark.class);
+                context.getLogger().log("Successfully parsed landmark: " + landmark);
+            } catch (com.google.gson.JsonSyntaxException e) {
+                context.getLogger().log("JSON syntax error parsing landmark: " + e.getMessage());
                 return new APIGatewayProxyResponseEvent()
                     .withStatusCode(400)
                     .withHeaders(getCorsHeaders())
-                    .withBody("Name, location, and category are required fields");
+                    .withBody("Invalid JSON format: " + e.getMessage());
+            } catch (com.google.gson.JsonParseException e) {
+                context.getLogger().log("JSON parsing error: " + e.getMessage());
+                return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(400)
+                    .withHeaders(getCorsHeaders())
+                    .withBody("Invalid landmark format: " + e.getMessage());
             }
-
-            landmark.setLandmarkId(UUID.randomUUID().toString());
+            
+            // Handle category if it's provided as a string
+            if (landmark.getCategory() == null) {
+                try {
+                    // Try to parse category from JSON if it exists as a string
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> jsonMap = gson.fromJson(input.getBody(), Map.class);
+                    if (jsonMap.containsKey("category") && jsonMap.get("category") instanceof String) {
+                        String categoryStr = (String) jsonMap.get("category");
+                        try {
+                            landmark.setCategory(Category.valueOf(categoryStr));
+                            context.getLogger().log("Converted category string to Category object: " + categoryStr);
+                        } catch (Exception ex) {
+                            context.getLogger().log("Could not convert category string: " + ex.getMessage());
+                            // Default to OTHER
+                            landmark.setCategory(Category.valueOf("OTHER"));
+                        }
+                    } else {
+                        landmark.setCategory(Category.valueOf("OTHER"));
+                    }
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                    context.getLogger().log("Error processing category: " + ex.getMessage());
+                    landmark.setCategory(Category.valueOf("OTHER"));
+                }
+            }
+            
+            // Validate required fields with more flexible handling
+            boolean missingRequired = false;
+            StringBuilder missingFields = new StringBuilder("Missing required fields: ");
+            
+            if (landmark.getName() == null || landmark.getName().trim().isEmpty()) {
+                landmark.setName("Unnamed Landmark");
+            }
+            
+            if (landmark.getLocation() == null || landmark.getLocation().trim().isEmpty()) {
+                // If latitude and longitude are provided, generate a location from them
+                if (landmark.getLatitude() != 0 && landmark.getLongitude() != 0) {
+                    landmark.setLocation("Location at " + landmark.getLatitude() + ", " + landmark.getLongitude());
+                } else {
+                    missingRequired = true;
+                    missingFields.append("location, ");
+                }
+            }
+            
+            if (landmark.getLatitude() == 0 && landmark.getLongitude() == 0) {
+                missingRequired = true;
+                missingFields.append("latitude/longitude, ");
+            }
+            
+            if (missingRequired) {
+                return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(400)
+                    .withHeaders(getCorsHeaders())
+                    .withBody(missingFields.toString().replaceAll(", $", ""));
+            }
+            
+            // Generate a UUID if not provided
+            if (landmark.getLandmarkId() == null || landmark.getLandmarkId().trim().isEmpty()) {
+                landmark.setLandmarkId(UUID.randomUUID().toString());
+            }
+       
+            if (landmark.getCreatedBy() == null || landmark.getCreatedBy().trim().isEmpty()) {
+                // Try to get from request context, otherwise use 'system'
+                String username = "system";
+                
+                // Try to extract username from request context if available
+                if (input.getRequestContext() != null && input.getRequestContext().getAuthorizer() != null) {
+                    Map<String, Object> authorizer = input.getRequestContext().getAuthorizer();
+                    if (authorizer != null && authorizer.containsKey("username")) {
+                        username = authorizer.get("username").toString();
+                    }
+                }
+                
+                landmark.setCreatedBy(username);
+            }
+            
+            // Ensure timestamps are set
+            if (landmark.getCreatedAt() == null) {
+                // This should already be set by the default constructor, but just to be safe
+                landmark.setLastUpdated(LocalDateTime.now());
+            }
+            
+            // Ensure timestamps are properly set before saving
+            landmark.setLastUpdated(LocalDateTime.now());
+            
+            context.getLogger().log("Saving landmark: " + landmark);
             landmarkRepository.saveLandmark(landmark);
 
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(201)
                 .withHeaders(getCorsHeaders())
                 .withBody(gson.toJson(landmark));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            context.getLogger().log("Invalid argument while creating landmark: " + e.getMessage());
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withHeaders(getCorsHeaders())
+                .withBody("Invalid landmark data: " + e.getMessage());
+        } catch (RuntimeException e) {
             context.getLogger().log("Error creating landmark: " + e.getMessage());
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(500)
@@ -142,11 +250,16 @@ public class LandmarkHandler implements RequestHandler<APIGatewayProxyRequestEve
                 .withStatusCode(200)
                 .withHeaders(getCorsHeaders())
                 .withBody(gson.toJson(landmark));
-        } catch (Exception e) {
+        } catch (com.google.gson.JsonParseException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withHeaders(getCorsHeaders())
+                .withBody("Invalid landmark format: " + e.getMessage());
+        } catch (RuntimeException e) {
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(404)
                 .withHeaders(getCorsHeaders())
-                .withBody("Landmark not found");
+                .withBody("Landmark not found: " + e.getMessage());
         }
     }
 
@@ -158,11 +271,16 @@ public class LandmarkHandler implements RequestHandler<APIGatewayProxyRequestEve
                 .withStatusCode(204)
                 .withHeaders(getCorsHeaders())
                 .withBody("");
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withHeaders(getCorsHeaders())
+                .withBody("Invalid landmark ID format");
+        } catch (RuntimeException e) {
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(404)
                 .withHeaders(getCorsHeaders())
-                .withBody("Landmark not found");
+                .withBody("Landmark not found: " + e.getMessage());
         }
     }
 }

@@ -15,10 +15,13 @@ public class User {
     private boolean isSocialWorker;
     private String email;
     private String passwordHash;
+    private String deviceToken;
+    private double latitude;
+    private double longitude;
 
     public User() {}
 
-    public User(String userId, String name, String address, boolean isVolunteer, boolean isSocialWorker,String email, String passwordHash) {
+    public User(String userId, String name, String address, boolean isVolunteer, boolean isSocialWorker, String email, String passwordHash) {
         this.userId = userId;
         this.name = name;
         this.address = address;
@@ -26,6 +29,14 @@ public class User {
         this.isSocialWorker = isSocialWorker;
         this.email = email;
         this.passwordHash = passwordHash;
+    }
+    
+    public User(String userId, String name, String address, boolean isVolunteer, boolean isSocialWorker,
+                String email, String passwordHash, String deviceToken, double latitude, double longitude) {
+        this(userId, name, address, isVolunteer, isSocialWorker, email, passwordHash);
+        this.deviceToken = deviceToken;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public String getUserId() { return userId; }
@@ -55,5 +66,29 @@ public class User {
     }
     public void setPasswordHash(String passwordHash){
         this.passwordHash = passwordHash;
+    }
+    
+    public String getDeviceToken() {
+        return deviceToken;
+    }
+    
+    public void setDeviceToken(String deviceToken) {
+        this.deviceToken = deviceToken;
+    }
+    
+    public double getLatitude() {
+        return latitude;
+    }
+    
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+    
+    public double getLongitude() {
+        return longitude;
+    }
+    
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 }

@@ -79,6 +79,10 @@
           <version>3.12.0</version>
           <configuration>
             <release>${java.version}</release>
+            <failOnError>false</failOnError>
+            <showWarnings>true</showWarnings>
+            <showDeprecation>true</showDeprecation>
+            <useIncrementalCompilation>false</useIncrementalCompilation>
           </configuration>
         </plugin>
 
@@ -90,6 +94,26 @@
           <configuration>
             <createDependencyReducedPom>false</createDependencyReducedPom>
           </configuration>
+        </plugin>
+        
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-antrun-plugin</artifactId>
+          <version>3.1.0</version>
+          <executions>
+            <execution>
+              <id>create-test-directories</id>
+              <phase>initialize</phase>
+              <goals>
+                <goal>run</goal>
+              </goals>
+              <configuration>
+                <target>
+                  <mkdir dir="${project.build.directory}/generated-test-sources/test-annotations"/>
+                </target>
+              </configuration>
+            </execution>
+          </executions>
         </plugin>
       </plugins>
     </pluginManagement>

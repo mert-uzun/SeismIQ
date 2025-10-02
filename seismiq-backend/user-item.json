@@ -1,0 +1,8 @@
+{
+  "userId": {"S": "80ac59cc-40b1-700d-d444-bb33d331cb00"},
+  "email": {"S": "test@example.com"},
+  "name": {"S": "Test User"},
+  "address": {"S": "123 Main St"},
+  "isVolunteer": {"BOOL": false},
+  "isSocialWorker": {"BOOL": false}
+}

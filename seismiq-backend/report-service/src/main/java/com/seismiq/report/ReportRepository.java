@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.seismiq.common.model.Category;
 
+import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Report;
 import com.seismiq.common.model.User;
 import com.seismiq.common.repository.DynamoDBRepository;
@@ -24,14 +24,13 @@ import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 
 public class ReportRepository extends DynamoDBRepository {
-    private static final String REPORTS_TABLE = "Reports";
     private static final String USER_REPORTS_INDEX = "UserReportsIndex";
     private static final String CATEGORY_STATUS_INDEX = "CategoryStatusIndex";
     private static final String TIMESTAMP_INDEX = "TimestampIndex";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
 
     public ReportRepository() {
-        super(REPORTS_TABLE);
+        super("seismiq-Reports"); // Use the service-specific Reports table
     }
 
     public void saveReport(Report report) {
@@ -102,7 +101,7 @@ public class ReportRepository extends DynamoDBRepository {
 
     public List<Report> getReportsByUser(String userId) {
         QueryRequest request = QueryRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .indexName(USER_REPORTS_INDEX)
             .keyConditionExpression("userId = :userId")
             .expressionAttributeValues(Map.of(":userId", AttributeValue.builder().s(userId).build()))
@@ -131,7 +130,7 @@ public class ReportRepository extends DynamoDBRepository {
         attributeValues.put(":lastUpdated", AttributeValue.builder().s(LocalDateTime.now().format(DATE_FORMATTER)).build());
 
         UpdateItemRequest request = UpdateItemRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .key(key)
             .updateExpression("SET status = :status, lastUpdated = :lastUpdated")
             .expressionAttributeValues(attributeValues)
@@ -147,7 +146,7 @@ public class ReportRepository extends DynamoDBRepository {
         key.put("reportId", AttributeValue.builder().s(reportId).build());
 
         DeleteItemRequest request = DeleteItemRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .key(key)
             .build();
 
@@ -156,7 +155,7 @@ public class ReportRepository extends DynamoDBRepository {
 
     public List<Report> getAllReports() {
         ScanRequest scanRequest = ScanRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .build();
 
         ScanResponse response = dynamoDbClient.scan(scanRequest);
@@ -171,7 +170,7 @@ public class ReportRepository extends DynamoDBRepository {
 
     public List<Report> getReportsByCategory(String category) {
         QueryRequest request = QueryRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .indexName(CATEGORY_STATUS_INDEX)
             .keyConditionExpression("category.type = :categoryType")
             .expressionAttributeValues(Map.of(":categoryType", AttributeValue.builder().s(category).build()))
@@ -189,7 +188,7 @@ public class ReportRepository extends DynamoDBRepository {
 
     public List<Report> getReportsByStatus(Report.ReportStatus status) {
         QueryRequest request = QueryRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .indexName(CATEGORY_STATUS_INDEX)
             .keyConditionExpression("status = :status")
             .expressionAttributeValues(Map.of(":status", AttributeValue.builder().s(status.name()).build()))
@@ -211,7 +210,7 @@ public class ReportRepository extends DynamoDBRepository {
         expressionValues.put(":endTime", AttributeValue.builder().s(endTime.format(DATE_FORMATTER)).build());
 
         QueryRequest request = QueryRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .indexName(TIMESTAMP_INDEX)
             .keyConditionExpression("timestamp BETWEEN :startTime AND :endTime")
             .expressionAttributeValues(expressionValues)
@@ -244,7 +243,7 @@ public class ReportRepository extends DynamoDBRepository {
         }
 
         UpdateItemRequest request = UpdateItemRequest.builder()
-            .tableName(REPORTS_TABLE)
+            .tableName(this.tableName)
             .key(key)
             .updateExpression(updateExpression.toString())
             .expressionAttributeValues(values)
