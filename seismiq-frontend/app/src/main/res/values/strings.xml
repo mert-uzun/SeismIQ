@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SeismIQ</string>
+    
+    <!-- General -->
+    <string name="loading">Loading…</string>
+    <string name="error_occurred">An error occurred</string>
+    
+    <!-- Authentication -->
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="email">Email</string>
+    <string name="full_name">Full Name</string>
+    <string name="address">Address</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="register_link">Don\'t have an account? Register</string>
+    <string name="login_link">Already have an account? Login</string>
+    <string name="volunteer">I am a volunteer</string>
+    <string name="social_worker">I am a social worker</string>
+    <string name="logout">Logout</string>
+    
+    <!-- Navigation -->
+    <string name="title_home">Home</string>
+    <string name="title_map">Map</string>
+    <string name="title_post">Post</string>
+    <string name="title_landmark">Landmark</string>
+    <string name="title_settings">Settings</string>
+    
+    <!-- Post -->
+    <string name="description">Description</string>
+    <string name="submit_report">Submit Report</string>
+    <string name="submit_landmark">Submit Landmark</string>
+    <string name="add_landmark">Add Landmark</string>
+    <string name="latitude">Latitude</string>
+    <string name="longitude">Longitude</string>
+    
+    <!-- Categories -->
+    <string-array name="report_categories">
+        <item>Immediate Help Needed</item>
+        <item>Structural Damage</item>
+        <item>Medical Assistance</item>
+        <item>Shelter Needed</item>
+        <item>Food and Water</item>
+        <item>Missing Person</item>
+        <item>Other</item>
+    </string-array>
+    
+    <!-- Landmark Categories -->
+    <string-array name="landmark_categories">
+        <item>Hospital</item>
+        <item>Medical Aid Station</item>
+        <item>Shelter</item>
+        <item>Food Distribution</item>
+        <item>Water Supply</item>
+        <item>Damaged Building</item>
+        <item>Evacuation Point</item>
+        <item>Road Closure</item>
+        <item>Safe Zone</item>
+        <item>Other</item>
+    </string-array>
+    
+</resources>
