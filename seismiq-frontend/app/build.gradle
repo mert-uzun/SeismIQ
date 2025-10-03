@@ -14,6 +14,10 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Optional custom BuildConfig fields
+        buildConfigField "String", "GOOGLE_MAPS_API_KEY", "\"YOUR_GOOGLE_MAPS_API_KEY\""
+        buildConfigField "boolean", "IS_DEBUG_MODE", "true"
     }
 
     buildTypes {
@@ -22,12 +26,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
@@ -41,9 +48,11 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.11'
 
-    // Google Maps for map UI
+    // Google Maps and Play Services
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
     implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-base:18.5.0'
+    implementation 'com.google.maps.android:android-maps-utils:2.3.0'
 
     // AndroidX Core libraries
     implementation 'androidx.core:core:1.12.0'
