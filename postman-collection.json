@@ -1,0 +1,852 @@
+{
+  "info": {
+    "name": "SeismIQ Backend API Collection",
+    "description": "Complete API collection for SeismIQ earthquake management system with comprehensive tests for registration and authentication flows",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Global pre-request script",
+          "console.log('🚀 Starting SeismIQ API Test Suite');",
+          "console.log('Base URL:', pm.collectionVariables.get('baseUrl'));",
+          "",
+          "// Set default headers",
+          "pm.request.headers.add({",
+          "    key: 'User-Agent',",
+          "    value: 'SeismIQ-Postman-Tests/1.0'",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// Global test script - runs after every request",
+          "console.log('📊 Response Status:', pm.response.code, pm.response.status);",
+          "console.log('⏱️ Response Time:', pm.response.responseTime + 'ms');",
+          "",
+          "// Count total tests",
+          "let totalTests = pm.test.index || 0;",
+          "pm.collectionVariables.set('totalTestsRun', totalTests + 1);"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testName",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "registeredUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "volunteerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "socialWorkerEmail",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "👤 User Service",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique test data",
+                  "const timestamp = Date.now();",
+                  "const testEmail = `test.user.${timestamp}@example.com`;",
+                  "const testName = `Test User ${timestamp}`;",
+                  "",
+                  "// Set variables for dynamic test data",
+                  "pm.collectionVariables.set('testEmail', testEmail);",
+                  "pm.collectionVariables.set('testName', testName);",
+                  "pm.collectionVariables.set('testPassword', 'TestPassword123!');",
+                  "",
+                  "console.log('Generated test email:', testEmail);",
+                  "console.log('Generated test name:', testName);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Response Status",
+                  "pm.test('Registration returns 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Test 2: Response Time",
+                  "pm.test('Response time is less than 5000ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "});",
+                  "",
+                  "// Test 3: Response Headers",
+                  "pm.test('Response has correct content type', function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});",
+                  "",
+                  "// Test 4: Response Body Structure",
+                  "pm.test('Response contains user data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    ",
+                  "    pm.expect(responseJson).to.have.property('userId');",
+                  "    pm.expect(responseJson).to.have.property('name');",
+                  "    pm.expect(responseJson).to.have.property('email');",
+                  "    pm.expect(responseJson).to.not.have.property('passwordHash'); // Password should not be returned",
+                  "});",
+                  "",
+                  "// Test 5: User Data Validation",
+                  "pm.test('User data matches input', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const testEmail = pm.collectionVariables.get('testEmail');",
+                  "    const testName = pm.collectionVariables.get('testName');",
+                  "    ",
+                  "    pm.expect(responseJson.email).to.eql(testEmail);",
+                  "    pm.expect(responseJson.name).to.eql(testName);",
+                  "    pm.expect(responseJson.address).to.eql('123 Main St, Istanbul');",
+                  "    pm.expect(responseJson.isVolunteer).to.eql(false);",
+                  "    pm.expect(responseJson.isSocialWorker).to.eql(false);",
+                  "});",
+                  "",
+                  "// Test 6: UserId Generation",
+                  "pm.test('UserId is generated and valid UUID format', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;",
+                  "    ",
+                  "    pm.expect(responseJson.userId).to.match(uuidRegex);",
+                  "    ",
+                  "    // Store userId for subsequent tests",
+                  "    pm.collectionVariables.set('registeredUserId', responseJson.userId);",
+                  "});",
+                  "",
+                  "// Test 7: Security - Password Not Exposed",
+                  "pm.test('Password hash is not exposed in response', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.not.have.property('passwordHash');",
+                  "});",
+                  "",
+                  "// Test 8: Location Data",
+                  "pm.test('Location data is correctly stored', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.latitude).to.eql(41.0082);",
+                  "    pm.expect(responseJson.longitude).to.eql(28.9784);",
+                  "});",
+                  "",
+                  "// Log success message",
+                  "if (pm.response.code === 201) {",
+                  "    console.log('✅ User registration successful!');",
+                  "    console.log('User ID:', pm.response.json().userId);",
+                  "} else {",
+                  "    console.log('❌ Registration failed with status:', pm.response.code);",
+                  "    console.log('Error:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{testName}}\",\n  \"email\": \"{{testEmail}}\",\n  \"passwordHash\": \"{{testPassword}}\",\n  \"address\": \"123 Main St, Istanbul\",\n  \"isVolunteer\": false,\n  \"isSocialWorker\": false,\n  \"latitude\": 41.0082,\n  \"longitude\": 28.9784\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Register User - Duplicate Email Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test for duplicate email error",
+                  "pm.test('Duplicate email returns 500 error', function () {",
+                  "    pm.response.to.have.status(500);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions email already registered', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.include('Email already registered');",
+                  "});",
+                  "",
+                  "console.log('✅ Duplicate email test completed - Error handled correctly');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Another User\",\n  \"email\": \"{{testEmail}}\",\n  \"passwordHash\": \"differentpassword\",\n  \"address\": \"456 Different St\",\n  \"isVolunteer\": true,\n  \"isSocialWorker\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Register User - Invalid Data Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test for invalid data handling",
+                  "pm.test('Invalid data returns error status', function () {",
+                  "    pm.response.to.have.status(500);",
+                  "});",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "",
+                  "console.log('✅ Invalid data test completed');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"invalid-email\",\n  \"passwordHash\": \"\",\n  \"address\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Register Volunteer User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique volunteer test data",
+                  "const timestamp = Date.now();",
+                  "const volunteerEmail = `volunteer.${timestamp}@example.com`;",
+                  "pm.collectionVariables.set('volunteerEmail', volunteerEmail);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Volunteer registration successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Volunteer flag is set correctly', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.isVolunteer).to.eql(true);",
+                  "    pm.expect(responseJson.isSocialWorker).to.eql(false);",
+                  "});",
+                  "",
+                  "console.log('✅ Volunteer registration successful');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Volunteer User\",\n  \"email\": \"{{volunteerEmail}}\",\n  \"passwordHash\": \"VolunteerPass123!\",\n  \"address\": \"789 Volunteer St, Ankara\",\n  \"isVolunteer\": true,\n  \"isSocialWorker\": false,\n  \"latitude\": 39.9334,\n  \"longitude\": 32.8597\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Register Social Worker",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique social worker test data",
+                  "const timestamp = Date.now();",
+                  "const socialWorkerEmail = `socialworker.${timestamp}@example.com`;",
+                  "pm.collectionVariables.set('socialWorkerEmail', socialWorkerEmail);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Social worker registration successful', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Social worker flag is set correctly', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.isVolunteer).to.eql(false);",
+                  "    pm.expect(responseJson.isSocialWorker).to.eql(true);",
+                  "});",
+                  "",
+                  "console.log('✅ Social worker registration successful');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Social Worker User\",\n  \"email\": \"{{socialWorkerEmail}}\",\n  \"passwordHash\": \"SocialWorkerPass123!\",\n  \"address\": \"321 Social St, Izmir\",\n  \"isVolunteer\": false,\n  \"isSocialWorker\": true,\n  \"latitude\": 38.4192,\n  \"longitude\": 27.1287\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Login Success",
+                  "pm.test('Login returns 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Response Time",
+                  "pm.test('Login response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "",
+                  "// Test 3: Response Structure",
+                  "pm.test('Login response contains user data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    ",
+                  "    pm.expect(responseJson).to.have.property('userId');",
+                  "    pm.expect(responseJson).to.have.property('name');",
+                  "    pm.expect(responseJson).to.have.property('email');",
+                  "    pm.expect(responseJson).to.not.have.property('passwordHash'); // Password should not be returned",
+                  "});",
+                  "",
+                  "// Test 4: User Data Validation",
+                  "pm.test('Login returns correct user data', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    const testEmail = pm.collectionVariables.get('testEmail');",
+                  "    ",
+                  "    pm.expect(responseJson.email).to.eql(testEmail);",
+                  "    pm.expect(responseJson.userId).to.eql(pm.collectionVariables.get('registeredUserId'));",
+                  "});",
+                  "",
+                  "// Test 5: Security - Password Not Exposed",
+                  "pm.test('Login response does not expose password', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.not.have.property('passwordHash');",
+                  "});",
+                  "",
+                  "// Store user ID for subsequent tests",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('userId', responseJson.userId);",
+                  "    console.log('✅ Login successful for user:', responseJson.email);",
+                  "    console.log('User ID stored:', responseJson.userId);",
+                  "} else {",
+                  "    console.log('❌ Login failed with status:', pm.response.code);",
+                  "    console.log('Error:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"passwordHash\": \"{{testPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login User - Invalid Credentials Test",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test for invalid credentials",
+                  "pm.test('Invalid login returns 500 error', function () {",
+                  "    pm.response.to.have.status(500);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions invalid credentials', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.include('Invalid email or password');",
+                  "});",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "",
+                  "console.log('✅ Invalid credentials test completed');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nonexistent@example.com\",\n  \"passwordHash\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"address\": \"456 New Street, Istanbul\",\n  \"isVolunteer\": true,\n  \"isSocialWorker\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌍 Earthquake Service",
+      "item": [
+        {
+          "name": "Get All Earthquakes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/earthquakes",
+              "host": ["{{baseUrl}}"],
+              "path": ["earthquakes"]
+            }
+          }
+        },
+        {
+          "name": "Create Earthquake",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"magnitude\": 5.2,\n  \"location\": \"Istanbul, Turkey\",\n  \"latitude\": 41.0082,\n  \"longitude\": 28.9784,\n  \"depth\": 10.5,\n  \"timestamp\": \"2025-09-23T10:30:00Z\",\n  \"description\": \"Moderate earthquake in Istanbul region\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/earthquakes",
+              "host": ["{{baseUrl}}"],
+              "path": ["earthquakes"]
+            }
+          }
+        },
+        {
+          "name": "Get Earthquake by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/earthquakes/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["earthquakes", "123"]
+            }
+          }
+        },
+        {
+          "name": "Get Earthquakes by Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/earthquakes/location?latitude=41.0082&longitude=28.9784&radius=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["earthquakes", "location"],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "41.0082"
+                },
+                {
+                  "key": "longitude",
+                  "value": "28.9784"
+                },
+                {
+                  "key": "radius",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Report Service",
+      "item": [
+        {
+          "name": "Get All Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports"]
+            }
+          }
+        },
+        {
+          "name": "Create Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Building Damage Report\",\n  \"description\": \"Severe cracks observed in building foundation\",\n  \"category\": \"BUILDING_DAMAGE\",\n  \"location\": \"Beyoğlu, Istanbul\",\n  \"latitude\": 41.0362,\n  \"longitude\": 28.9847,\n  \"urgencyLevel\": \"HIGH\",\n  \"status\": \"PENDING\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports"]
+            }
+          }
+        },
+        {
+          "name": "Get Report by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "123"]
+            }
+          }
+        },
+        {
+          "name": "Update Report Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports/123/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "123", "status"]
+            }
+          }
+        },
+        {
+          "name": "Get Reports by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/category/BUILDING_DAMAGE",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "category", "BUILDING_DAMAGE"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📍 Landmark Service",
+      "item": [
+        {
+          "name": "Get All Landmarks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landmarks",
+              "host": ["{{baseUrl}}"],
+              "path": ["landmarks"]
+            }
+          }
+        },
+        {
+          "name": "Create Landmark",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Galata Tower\",\n  \"category\": \"HISTORICAL_BUILDING\",\n  \"location\": \"Galata, Istanbul\",\n  \"latitude\": 41.0256,\n  \"longitude\": 28.9744,\n  \"description\": \"Historic tower and tourist attraction\",\n  \"capacity\": 200,\n  \"isSafeZone\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/landmarks",
+              "host": ["{{baseUrl}}"],
+              "path": ["landmarks"]
+            }
+          }
+        },
+        {
+          "name": "Get Landmark by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landmarks/123",
+              "host": ["{{baseUrl}}"],
+              "path": ["landmarks", "123"]
+            }
+          }
+        },
+        {
+          "name": "Get Landmarks by Location",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/landmarks/location?latitude=41.0256&longitude=28.9744&radius=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["landmarks", "location"],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "41.0256"
+                },
+                {
+                  "key": "longitude",
+                  "value": "28.9744"
+                },
+                {
+                  "key": "radius",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

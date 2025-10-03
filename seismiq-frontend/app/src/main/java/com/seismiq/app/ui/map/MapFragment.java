@@ -1,12 +1,16 @@
 package com.seismiq.app.ui.map;
 
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -42,30 +46,31 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     private MaterialButton btnEarthquakes;
     private MaterialButton btnLandmarks;
     private MaterialButton btnAll;
-
+    
     private EarthquakeApiService earthquakeApiService;
     private LandmarkApiService landmarkApiService;
-
+    
     private List<Earthquake> earthquakes = new ArrayList<>();
     private List<Landmark> landmarks = new ArrayList<>();
-    private final Map<String, Marker> earthquakeMarkers = new HashMap<>();
-    private final Map<String, Marker> landmarkMarkers = new HashMap<>();
+    private Map<String, Marker> earthquakeMarkers = new HashMap<>();
+    private Map<String, Marker> landmarkMarkers = new HashMap<>();
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_map, container, false);
-
+        
         // Initialize services
         earthquakeApiService = RetrofitClient.getClient().create(EarthquakeApiService.class);
         landmarkApiService = RetrofitClient.getClient().create(LandmarkApiService.class);
-
+        
         // Initialize UI components
         toggleGroup = root.findViewById(R.id.toggle_map_view);
         btnEarthquakes = root.findViewById(R.id.btn_earthquakes);
         btnLandmarks = root.findViewById(R.id.btn_landmarks);
         btnAll = root.findViewById(R.id.btn_all);
-
+        
+        // Set up the toggle button group
         toggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (isChecked) {
                 if (checkedId == R.id.btn_earthquakes) {
@@ -80,49 +85,52 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 }
             }
         });
-
+        
         // Initialize map
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager()
                 .findFragmentById(R.id.map);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }
-
+        
         return root;
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
+        
         // Set default location (Turkey)
         LatLng turkey = new LatLng(39.0, 35.0);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(turkey, 6));
-
+        
         // Load data
         loadEarthquakes();
         loadLandmarks();
-
+        
+        // Set up info window click listener
         mMap.setOnInfoWindowClickListener(marker -> {
+            // Handle info window click (can navigate to detail page)
             Object tag = marker.getTag();
             if (tag instanceof Earthquake) {
-                Earthquake eq = (Earthquake) tag;
-                Toast.makeText(requireContext(), "Earthquake: " + eq.getMagnitude(), Toast.LENGTH_SHORT).show();
+                Earthquake earthquake = (Earthquake) tag;
+                // Navigate to earthquake detail
+                Toast.makeText(requireContext(), "Earthquake: " + earthquake.getMagnitude(), Toast.LENGTH_SHORT).show();
             } else if (tag instanceof Landmark) {
-                Landmark lm = (Landmark) tag;
-                Toast.makeText(requireContext(), "Landmark: " + lm.getName(), Toast.LENGTH_SHORT).show();
+                Landmark landmark = (Landmark) tag;
+                // Navigate to landmark detail
+                Toast.makeText(requireContext(), "Landmark: " + landmark.getName(), Toast.LENGTH_SHORT).show();
             }
         });
     }
-
+    
     private void loadEarthquakes() {
         earthquakeApiService.getRecentEarthquakes().enqueue(new Callback<List<Earthquake>>() {
             @Override
             public void onResponse(Call<List<Earthquake>> call, Response<List<Earthquake>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     earthquakes = response.body();
-                    int checkedId = toggleGroup.getCheckedButtonId();
-                    if (checkedId == R.id.btn_earthquakes || checkedId == R.id.btn_all) {
+                    if (btnEarthquakes.isChecked() || btnAll.isChecked()) {
                         showEarthquakes(true);
                     }
                 }
@@ -134,15 +142,14 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
             }
         });
     }
-
+    
     private void loadLandmarks() {
-        landmarkApiService.getLandmarks().enqueue(new Callback<List<Landmark>>() {
+        landmarkApiService.getAllLandmarks().enqueue(new Callback<List<Landmark>>() {
             @Override
             public void onResponse(Call<List<Landmark>> call, Response<List<Landmark>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     landmarks = response.body();
-                    int checkedId = toggleGroup.getCheckedButtonId();
-                    if (checkedId == R.id.btn_landmarks || checkedId == R.id.btn_all) {
+                    if (btnLandmarks.isChecked() || btnAll.isChecked()) {
                         showLandmarks(true);
                     }
                 }
@@ -154,54 +161,83 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
             }
         });
     }
-
+    
     private void showEarthquakes(boolean show) {
         if (mMap == null) return;
-
-        for (Earthquake eq : earthquakes) {
-            String id = eq.getEarthquakeId();
-            LatLng pos = new LatLng(eq.getLatitude(), eq.getLongitude());
-
-            Marker marker = earthquakeMarkers.get(id);
-            if (marker != null) {
-                marker.setVisible(show);
-            } else if (show) {
-                float hue = Math.max(0, Math.min(120, 120 - (float) eq.getMagnitude() * 15));
-                Marker newMarker = mMap.addMarker(new MarkerOptions()
-                        .position(pos)
-                        .title("M" + eq.getMagnitude())
-                        .snippet(eq.getLocation())
-                        .icon(BitmapDescriptorFactory.defaultMarker(hue)));
-                newMarker.setTag(eq);
-                earthquakeMarkers.put(id, newMarker);
+        
+        // Clear existing earthquake markers if hiding
+        if (!show) {
+            for (Marker marker : earthquakeMarkers.values()) {
+                marker.setVisible(false);
+            }
+            return;
+        }
+        
+        // Show existing markers or create new ones
+        for (Earthquake earthquake : earthquakes) {
+            String id = earthquake.getEarthquakeId();
+            LatLng position = new LatLng(earthquake.getLatitude(), earthquake.getLongitude());
+            
+            if (earthquakeMarkers.containsKey(id)) {
+                // Show existing marker
+                earthquakeMarkers.get(id).setVisible(true);
+            } else {
+                // Create new marker
+                float magnitude = (float) earthquake.getMagnitude();
+                float hue = 120 - (magnitude * 15); // Green to red based on magnitude
+                hue = Math.max(0, Math.min(120, hue)); // Clamp between 0-120
+                
+                MarkerOptions markerOptions = new MarkerOptions()
+                        .position(position)
+                        .title("M" + magnitude)
+                        .snippet(earthquake.getLocation())
+                        .icon(BitmapDescriptorFactory.defaultMarker(hue));
+                
+                Marker marker = mMap.addMarker(markerOptions);
+                marker.setTag(earthquake);
+                earthquakeMarkers.put(id, marker);
             }
         }
     }
-
+    
     private void showLandmarks(boolean show) {
         if (mMap == null) return;
-
-        for (Landmark lm : landmarks) {
-            String id = lm.getLandmarkId();
-            LatLng pos = new LatLng(lm.getLatitude(), lm.getLongitude());
-
-            Marker marker = landmarkMarkers.get(id);
-            if (marker != null) {
-                marker.setVisible(show);
-            } else if (show) {
-                String categoryStr = lm.getCategory().toString(); // Convert Category to String
-                Marker newMarker = mMap.addMarker(new MarkerOptions()
-                        .position(pos)
-                        .title(lm.getName())
-                        .snippet(categoryStr)
-                        .icon(BitmapDescriptorFactory.defaultMarker(getLandmarkHue(categoryStr))));
-                newMarker.setTag(lm);
-                landmarkMarkers.put(id, newMarker);
+        
+        // Clear existing landmark markers if hiding
+        if (!show) {
+            for (Marker marker : landmarkMarkers.values()) {
+                marker.setVisible(false);
+            }
+            return;
+        }
+        
+        // Show existing markers or create new ones
+        for (Landmark landmark : landmarks) {
+            String id = landmark.getLandmarkId();
+            LatLng position = new LatLng(landmark.getLatitude(), landmark.getLongitude());
+            
+            if (landmarkMarkers.containsKey(id)) {
+                // Show existing marker
+                landmarkMarkers.get(id).setVisible(true);
+            } else {
+                // Create new marker with custom icon based on category
+                float hue = getLandmarkHue(landmark.getCategory());
+                
+                MarkerOptions markerOptions = new MarkerOptions()
+                        .position(position)
+                        .title(landmark.getName())
+                        .snippet(landmark.getCategory())
+                        .icon(BitmapDescriptorFactory.defaultMarker(hue));
+                
+                Marker marker = mMap.addMarker(markerOptions);
+                marker.setTag(landmark);
+                landmarkMarkers.put(id, marker);
             }
         }
     }
-
+    
     private float getLandmarkHue(String category) {
+        // Assign different colors based on landmark category
         switch (category.toLowerCase()) {
             case "hospital": return BitmapDescriptorFactory.HUE_RED;
             case "medical aid station": return BitmapDescriptorFactory.HUE_ROSE;

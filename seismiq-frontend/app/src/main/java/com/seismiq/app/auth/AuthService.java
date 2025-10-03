@@ -1,130 +1,132 @@
 package com.seismiq.app.auth;
 
-import android.se.omapi.Session;
+import android.content.Context;
 import android.util.Log;
 
-import com.amplifyframework.auth.AuthUserAttribute;
-import com.amplifyframework.auth.AuthUserAttributeKey;
+import com.amplifyframework.auth.AuthException;
+import com.amplifyframework.auth.AuthSession;
 import com.amplifyframework.auth.cognito.AWSCognitoAuthSession;
-import com.amplifyframework.auth.cognito.result.AWSCognitoAuthSignOutResult;
-import com.amplifyframework.auth.options.AuthSignOutOptions;
-import com.amplifyframework.auth.options.AuthSignUpOptions;
+import com.amplifyframework.auth.result.AuthSignInResult;
+import com.amplifyframework.auth.result.AuthSignUpResult;
 import com.amplifyframework.core.Amplify;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class AuthService {
     private static final String TAG = "AuthService";
 
-    public CompletableFuture<Boolean> registerUser(String username, String password, String email,
-                                                   String name, String address,
-                                                   boolean isVolunteer, boolean isSocialWorker) {
+    // Register a new user
+    public CompletableFuture<Boolean> registerUser(String username, String password, String email, 
+                                                 String name, String address,
+                                                 boolean isVolunteer, boolean isSocialWorker) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-
-        List<AuthUserAttribute> attributes = new ArrayList<>();
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.email(), email));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.name(), name));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.address(), address));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("isVolunteer"), String.valueOf(isVolunteer)));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("isSocialWorker"), String.valueOf(isSocialWorker)));
-
-        AuthSignUpOptions options = AuthSignUpOptions.builder()
-                .userAttributes(attributes)
-                .build();
-
-        Amplify.Auth.signUp(username, password, options,
-                result -> {
-                    future.complete(result.isSignUpComplete());
-                    Log.i(TAG, "Sign up result: " + result.isSignUpComplete());
-                },
-                error -> future.completeExceptionally(error)
+        
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put("email", email);
+        attributes.put("name", name);
+        attributes.put("address", address);
+        attributes.put("isVolunteer", String.valueOf(isVolunteer));
+        attributes.put("isSocialWorker", String.valueOf(isSocialWorker));
+        
+        Amplify.Auth.signUp(
+            username,
+            password,
+            attributes,
+            result -> {
+                Log.i(TAG, "Sign up succeeded");
+                future.complete(true);
+            },
+            error -> {
+                Log.e(TAG, "Sign up failed", error);
+                future.completeExceptionally(error);
+            }
         );
-
+        
         return future;
     }
 
-    public CompletableFuture<Boolean> confirmSignUp(String username, String code) {
-        CompletableFuture<Boolean> future = new CompletableFuture<>();
-
-        Amplify.Auth.confirmSignUp(username, code,
-                result -> future.complete(result.isSignUpComplete()),
-                error -> future.completeExceptionally(error)
-        );
-
-        return future;
-    }
-
+    // Login a user
     public CompletableFuture<Boolean> login(String username, String password) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-
-        Amplify.Auth.signIn(username, password,
-                result -> future.complete(result.isSignedIn()),
-                error -> future.completeExceptionally(error)
+        
+        Amplify.Auth.signIn(
+            username,
+            password,
+            result -> {
+                Log.i(TAG, "Login succeeded");
+                future.complete(true);
+            },
+            error -> {
+                Log.e(TAG, "Login failed", error);
+                future.completeExceptionally(error);
+            }
         );
-
+        
         return future;
     }
 
+    // Logout the current user
     public CompletableFuture<Boolean> logout() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-
-        AuthSignOutOptions options = AuthSignOutOptions.builder()
-                .globalSignOut(true)
-                .build();
-
-        Amplify.Auth.signOut(options, signOutResult -> {
-            if (signOutResult instanceof AWSCognitoAuthSignOutResult.CompleteSignOut) {
-                Log.i(TAG, "successfully signed out");
-            } else if (signOutResult instanceof AWSCognitoAuthSignOutResult.PartialSignOut) {
-                Log.i(TAG, "Partially signed out");
-            } else if (signOutResult instanceof AWSCognitoAuthSignOutResult.FailedSignOut) {
-                Log.i(TAG, "Failed to sign out");
+        
+        Amplify.Auth.signOut(
+            () -> {
+                Log.i(TAG, "Logout succeeded");
+                future.complete(true);
+            },
+            error -> {
+                Log.e(TAG, "Logout failed", error);
+                future.completeExceptionally(error);
             }
-        });
+        );
+        
         return future;
     }
 
+    // Get current user's session (JWT token for API calls)
     public CompletableFuture<String> getIdToken() {
         CompletableFuture<String> future = new CompletableFuture<>();
-
+        
         Amplify.Auth.fetchAuthSession(
-                result -> {
-                    if (result instanceof AWSCognitoAuthSession) {
-                        AWSCognitoAuthSession session = (AWSCognitoAuthSession) result;
-
-                        if (session.isSignedIn()) {
-                            try {
-                                String token = session.getUserPoolTokensResult().getValue().getIdToken();
-                                future.complete(token);
-                                Log.i(TAG, "Token retrieved");
-                            } catch (Exception e) {
-                                future.completeExceptionally(new Exception("Failed to get IdToken", e));
-                            }
-                        } else {
-                            future.completeExceptionally(new Exception("User not signed in"));
-                        }
-                    } else {
-                        future.completeExceptionally(new Exception("Session is not AWSCognitoAuthSession"));
-                    }
-                },
-                error -> future.completeExceptionally(error)
+            result -> {
+                AWSCognitoAuthSession cognitoAuthSession = (AWSCognitoAuthSession) result;
+                
+                if (cognitoAuthSession.isSignedIn() && 
+                    cognitoAuthSession.getIdToken().getValue() != null) {
+                    String token = cognitoAuthSession.getIdToken().getValue();
+                    Log.i(TAG, "Token successfully retrieved");
+                    future.complete(token);
+                } else {
+                    Log.e(TAG, "User is not signed in or token is null");
+                    future.completeExceptionally(
+                        new Exception("User is not signed in or token is null"));
+                }
+            },
+            error -> {
+                Log.e(TAG, "Failed to get user token", error);
+                future.completeExceptionally(error);
+            }
         );
-
+        
         return future;
     }
 
-
+    // Check if user is logged in
     public CompletableFuture<Boolean> isLoggedIn() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-
+        
         Amplify.Auth.fetchAuthSession(
-                result -> future.complete(result.isSignedIn()),
-                error -> future.completeExceptionally(error)
+            result -> {
+                future.complete(result.isSignedIn());
+            },
+            error -> {
+                Log.e(TAG, "Failed to check auth status", error);
+                future.completeExceptionally(error);
+            }
         );
-
+        
         return future;
     }
-
 }

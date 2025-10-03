@@ -1,0 +1,108 @@
+import os
+
+from dotenv import load_dotenv
+from tweet_preprocessing import preprocess_tweet, realtime_tfidf_for_new_tweets, feature_extraction_pipeline
+from kandilli_scrape import handle_earthquake_data, get_the_twitter_query, get_quake_settlement_and_S_value_data
+import tweepy
+import datetime
+import boto3
+import time
+
+load_dotenv()
+
+# Twitter API setup
+tw_api_key = os.getenv("TWITTER_API_KEY")
+tw_api_secret = os.getenv("TWITTER_API_SECRET")
+tw_access_token = os.getenv("TWITTER_ACCESS_TOKEN")
+tw_access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+auth = tweepy.OAuth1UserHandler(tw_api_key, tw_api_secret, tw_access_token, tw_access_token_secret)
+api = tweepy.API(auth)
+
+# DynamoDB setup
+dynamodb = boto3.resource("dynamodb")
+tweets_table = dynamodb.Table(os.environ["TWEETS_TABLE_NAME"])
+last_seen_table = dynamodb.Table(os.environ["LAST_SEEN_TABLE_NAME"])
+last_batched_tweet_table = dynamodb.Table(os.environ["LAST_BATCHED_TWEET_TABLE_NAME"])
+earthquakes_table = dynamodb.Table(os.environ["EARTHQUAKES_TABLE_NAME"])
+
+# Kandilli Earthquake Research Institute URL
+URL = 'http://www.koeri.boun.edu.tr/scripts/lst1.asp'
+
+def lambda_handler(event, context):
+    # Collect and save earthquake data
+    handle_earthquake_data(URL)
+
+    settlements_and_S_value_data = get_quake_settlement_and_S_value_data()
+
+    twitter_query = get_the_twitter_query(settlements_and_S_value_data)
+
+    # Get last seen ID
+    last_seen_id = get_last_seen_id(last_seen_table)
+
+    if(last_seen_id is None): # use time filter
+        tweets = api.search_tweets(
+            q=twitter_query,
+            count=100,
+            tweet_mode="extended",
+            result_type="recent"
+        )
+
+        # filter by time last 30 minutes because this is the first search
+        tweets = [tweet for tweet in tweets if tweet.created_at > datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=30)]
+    else: # use since_id
+        tweets = api.search_tweets(
+            q=twitter_query,
+            since_id=last_seen_id,
+            count=100,
+            tweet_mode="extended",
+            result_type="recent"
+        )
+
+    # Process and store tweets
+    tfidf_table = dynamodb.Table(os.environ["TFIDF_TABLE_NAME"])
+
+    for tweet in tweets:
+        tweet_id = tweet.id_str
+        text = tweet.full_text
+        created_at = tweet.created_at
+        user = tweet.user.screen_name
+        hashtags = [hashtag["text"] for hashtag in tweet.entities.get("hashtags", [])]
+        ten_years_from_now = int(time.time()) + 10 * 365 * 24 * 60 * 60
+
+        tweet_json = {
+            "tweet_id": tweet_id,
+            "text": text,
+            "processed_data": preprocess_tweet(text),
+            "created_at": str(created_at),
+            "user": user,
+            "hashtags": hashtags,
+            "ttl": ten_years_from_now, # Delete the data after 10 years of its entry
+            "gpt_processed": False
+        }
+
+        if tweet_json.get("processed_data", {}).get("preprocessed_text", "") == "":
+            continue # skip the tweet if it has an empty clean_text, meaning it has been filtered out by the cleaning pipeline
+
+        tweets_table.put_item(Item=tweet_json)
+
+        realtime_tfidf_for_new_tweets(tweets_table, tfidf_table, tweet_id, 15)
+
+    # Update since_id
+    if tweets:
+        update_last_seen_id(last_seen_table, tweets[0].id_str) # since_id is the id of the newest tweet system got from the last search
+
+    # Start feature extraction pipeline
+    try:
+        response = feature_extraction_pipeline(tweets_table, last_batched_tweet_table)
+    except Exception as e:
+        print(f"Error in feature extraction pipeline: {e}, response: {response if response else 'NaN'}")
+        
+    return {"statusCode": 200, "body": "Success"}
+
+def get_last_seen_id(table) -> str:
+    response = table.get_item(Key={"tracker_id": "since_id"})
+    last_seen_id = response.get("Item", {}).get("value")
+    return str(last_seen_id) if last_seen_id else None
+
+def update_last_seen_id(table, value: str):
+    table.put_item(Item={"tracker_id": "since_id", "value": value})

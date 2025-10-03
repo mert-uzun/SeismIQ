@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Google Map Fragment -->
     <fragment
         android:id="@+id/landmarkMapFragment"
         android:name="com.google.android.gms.maps.SupportMapFragment"
@@ -16,7 +14,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Coordinates Card -->
     <androidx.cardview.widget.CardView
         android:id="@+id/coordinatesCard"
         android:layout_width="match_parent"
@@ -82,7 +79,6 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Input ScrollView -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -97,23 +93,6 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Landmark Name -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Landmark Name:"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <EditText
-                android:id="@+id/et_landmark_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Enter landmark name"
-                android:inputType="text"
-                android:layout_marginBottom="16dp" />
-
-            <!-- Landmark Category -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -127,7 +106,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp" />
 
-            <!-- Landmark Description -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -136,7 +114,7 @@
                 android:layout_marginBottom="8dp" />
 
             <EditText
-                android:id="@+id/et_landmark_description"
+                android:id="@+id/editTextLandmarkDescription"
                 android:layout_width="match_parent"
                 android:layout_height="100dp"
                 android:inputType="textMultiLine"
@@ -144,7 +122,6 @@
                 android:hint="Enter landmark description"
                 android:layout_marginBottom="16dp" />
 
-            <!-- Submit Button -->
             <Button
                 android:id="@+id/buttonSubmitLandmark"
                 android:layout_width="match_parent"
@@ -154,7 +131,6 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBarLandmark"
         style="?android:attr/progressBarStyle"

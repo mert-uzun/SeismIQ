@@ -58,7 +58,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         progressBar = binding.progressBarMap;
         
         // Get the SupportMapFragment and request notification when map is ready
-        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.mapFragment);
         if (mapFragment != null) {
             mapFragment.getMapAsync(this);
         }

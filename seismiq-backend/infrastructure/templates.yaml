@@ -1,0 +1,510 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  MobilePushPlatformApplicationArn:
+    Type: String
+    Description: ARN of the pre-created SNS Platform Application (e.g., arn:aws:sns:...:app/GCM/seismiq-android)
+Description: SeismIQ Backend Services
+
+Globals:
+  Function:
+    Runtime: java21
+    MemorySize: 512
+    Timeout: 30
+    Environment:
+      Variables:
+        PLATFORM_APP_ARN:
+          Ref: MobilePushPlatformApplicationArn
+        REGION:
+          Ref: AWS::Region
+        AWS_SAM_LOCAL: "false"
+
+Resources:
+  SeismiqApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+            Identity:
+              Header: Authorization
+            Type: COGNITO_USER_POOLS
+        DefaultAuthorizer: CognitoAuthorizer
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # Lambda Functions
+  EarthquakeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: com.seismiq.earthquake.EarthquakeHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      CodeUri: ../earthquake-service
+      Environment:
+        Variables:
+          REGION:
+            Ref: AWS::Region
+          AWS_SAM_LOCAL: "false"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: EarthquakesTable
+      Events:
+        GetEarthquakes:
+            Type: Api
+            Properties:
+              RestApiId:
+                Ref: SeismiqApi
+              Path: /earthquakes
+              Method: GET
+              Auth:
+                Authorizer: CognitoAuthorizer
+        CreateEarthquake:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /earthquakes
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetEarthquakeById:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /earthquakes/{earthquakeId}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetByLocation:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /earthquakes/location
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # Cognito User Pool
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: SeismiqUserPool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: address
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: isVolunteer
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: isSocialWorker
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+
+  # Cognito User Pool Client
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId:
+        Ref: CognitoUserPool
+      ClientName: SeismiqUserPoolClient
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # DynamoDB Tables - Using existing tables
+  EarthquakesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: "seismiq-Earthquakes"
+      AttributeDefinitions:
+        - AttributeName: earthquakeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: earthquakeId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: "seismiq-Users"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: "seismiq-Reports"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: reportId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reportId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: UserReportsIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  PriorityZonesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: "seismiq-PriorityZones"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: zoneId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: zoneId
+          KeyType: HASH
+
+  UserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../user-service
+      Handler: com.seismiq.user.UserHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          REGION:
+            Ref: AWS::Region
+          AWS_SAM_LOCAL: "false"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: UsersTable
+      Events:
+        CreateUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        LoginUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        GetUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteUser:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../report-service
+      Handler: com.seismiq.report.ReportHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          REGION:
+            Ref: AWS::Region
+          AWS_SAM_LOCAL: "false"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: ReportsTable
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: LandmarksTable
+      Events:
+        ListReports:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        CreateReport:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetReport:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/{reportId}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateReport:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/{reportId}
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteReport:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/{reportId}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateReportStatus:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/{reportId}/status
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateReportLocation:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/{reportId}/location
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetUserReports:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /users/{userId}/reports
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetReportsByCategory:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/category/{category}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetReportsByStatus:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /reports/status/{status}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  LandmarkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../landmark-service
+      Handler: com.seismiq.landmark.LandmarkHandler::handleRequest
+      Runtime: java21
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          REGION:
+            Ref: AWS::Region
+          AWS_SAM_LOCAL: "false"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Ref: LandmarksTable
+      Events:
+        ListLandmarks:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /landmarks
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        CreateLandmark:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /landmarks
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetLandmark:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /landmarks/{landmarkId}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateLandmark:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /landmarks/{landmarkId}
+            Method: PUT
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteLandmark:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: SeismiqApi
+            Path: /landmarks/{landmarkId}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # SNS Topic for Landmark Notifications
+  LandmarkNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${AWS::StackName}-landmark-notifications
+
+  LandmarksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "seismiq-Landmarks"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: landmarkId
+          AttributeType: S
+        - AttributeName: category
+          AttributeType: S
+        - AttributeName: reportId
+          AttributeType: S
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: landmarkId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: CategoryIndex
+          KeySchema:
+            - AttributeName: category
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: ReportIndex
+          KeySchema:
+            - AttributeName: reportId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: LocationIndex
+          KeySchema:
+            - AttributeName: geohash
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Service
+          Value: landmark
+
+Outputs:
+  ApiURL:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: "https://${SeismiqApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value:
+      Ref: CognitoUserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value:
+      Ref: CognitoUserPoolClient
