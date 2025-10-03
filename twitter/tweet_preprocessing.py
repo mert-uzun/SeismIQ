@@ -465,6 +465,7 @@ def batch_extract_features_with_gpt(preprocessed_batch: list[list[str], list[str
         "urgency_level": one of ["very_high", "high", "medium", "low"] if you are not completely sure about the urgency level, return "low",
         "need_type": one of ["need_help", "offering_help", "information", "none"] if you are not completely sure about the need type, return "none",
         "location": city/district/neighborhood/address if present; else null,
+        "coordinates": coordinates of given locations "City, District" in [latitude, longitude] format as array if location exists, else null,
         "requests": the items being asked for as an array (exact Turkish word/phrase from the tweet, e.g. "çadır", "ekmek", "vinç") if present, else null,
         "situation_severity": one of ["life_threatening", "serious", "moderate", "minor", "none"],
         "time_sensitivity": one of ["immediate", "hours", "days", "none"], if you are not completely sure about the time sensitivity, return "none",
