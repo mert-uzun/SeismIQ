@@ -10,6 +10,8 @@ import com.google.gson.JsonSyntaxException;
 import com.seismiq.common.model.Category;
 import com.seismiq.common.model.Report;
 import com.seismiq.common.model.User;
+import com.seismiq.common.service.GeoNamesGeocodingService;
+import com.seismiq.common.service.GeoNamesGeocodingService.GeocodingResult;
 import com.seismiq.common.util.LocalDateTimeAdapter;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private final ReportRepository reportRepository;
     private final Gson gson;
+    private final GeoNamesGeocodingService geocodingService;
 
     /**
      * Default constructor that initializes with a new ReportRepository instance.
@@ -42,6 +45,21 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
      */
     public ReportHandler(ReportRepository reportRepository) {
         this.reportRepository = reportRepository;
+        this.geocodingService = new GeoNamesGeocodingService();
+        this.gson = new GsonBuilder()
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+            .create();
+    }
+
+    /**
+     * Constructor with full dependency injection support for testing.
+     * 
+     * @param reportRepository The repository implementation for report data operations
+     * @param geocodingService The geocoding service implementation
+     */
+    public ReportHandler(ReportRepository reportRepository, GeoNamesGeocodingService geocodingService) {
+        this.reportRepository = reportRepository;
+        this.geocodingService = geocodingService;
         this.gson = new GsonBuilder()
             .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
@@ -110,6 +128,16 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             return httpMethod.equals("GET") ? getReportsByStatus(status) : notFound();
         }
 
+        if (path.matches("/reports/city/[^/]+")) {
+            String city = path.substring("/reports/city/".length());
+            return httpMethod.equals("GET") ? getReportsByCity(city) : notFound();
+        }
+
+        if (path.matches("/reports/province/[^/]+")) {
+            String province = path.substring("/reports/province/".length());
+            return httpMethod.equals("GET") ? getReportsByProvince(province) : notFound();
+        }
+
         return notFound();
     }
 
@@ -128,6 +156,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
      * @return 201 Created on success with the created report
      *         400 Bad Request if required fields are missing or JSON is invalid
      */
+    @SuppressWarnings("unchecked")
     private APIGatewayProxyResponseEvent createReport(APIGatewayProxyRequestEvent input) {
         try {
             Map<String, Object> bodyMap = gson.fromJson(input.getBody(), Map.class);
@@ -157,6 +186,80 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
 
             Object currentLocationObj = bodyMap.get("currentLocation");
             report.setCurrentLocation(currentLocationObj != null && Boolean.parseBoolean(currentLocationObj.toString()));
+
+            // Handle coordinate finding system - user can choose either coordinates or city/province
+            boolean hasCoordinates = bodyMap.get("latitude") != null && bodyMap.get("longitude") != null;
+            boolean hasCityProvince = bodyMap.get("city") != null || bodyMap.get("province") != null;
+
+            if (hasCoordinates) {
+                // User provided coordinates - use them and optionally find city/province
+                double latitude = Double.parseDouble(bodyMap.get("latitude").toString());
+                double longitude = Double.parseDouble(bodyMap.get("longitude").toString());
+                
+                report.setLatitude(latitude);
+                report.setLongitude(longitude);
+
+                // If city/province not provided, try to find them using reverse geocoding
+                if (!hasCityProvince) {
+                    try {
+                        GeocodingResult geocodingResult = geocodingService.findLocationFromCoordinates(latitude, longitude);
+                        if (geocodingResult != null) {
+                            report.setCity(geocodingResult.getCity());
+                            report.setProvince(geocodingResult.getProvince());
+                        }
+                    } catch (Exception e) {
+                        // Log warning but continue - coordinates are more important
+                        System.err.println("Failed to reverse geocode coordinates: " + e.getMessage());
+                    }
+                } else {
+                    // User provided both coordinates and city/province - use their values
+                    if (bodyMap.get("city") != null) {
+                        report.setCity((String) bodyMap.get("city"));
+                    }
+                    if (bodyMap.get("province") != null) {
+                        report.setProvince((String) bodyMap.get("province"));
+                    }
+                }
+
+            } else if (hasCityProvince) {
+                // User provided city/province but no coordinates - find coordinates
+                String city = (String) bodyMap.get("city");
+                String province = (String) bodyMap.get("province");
+                
+                report.setCity(city);
+                report.setProvince(province);
+
+                try {
+                    GeocodingResult geocodingResult = geocodingService.findCoordinatesFromName(city, province);
+                    if (geocodingResult != null) {
+                        report.setLatitude(geocodingResult.getLatitude());
+                        report.setLongitude(geocodingResult.getLongitude());
+                    } else {
+                        // If specific city not found, try with just province
+                        if (province != null) {
+                            geocodingResult = geocodingService.findCoordinatesFromName(province, null);
+                            if (geocodingResult != null) {
+                                report.setLatitude(geocodingResult.getLatitude());
+                                report.setLongitude(geocodingResult.getLongitude());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log warning but continue - city/province info is still valuable
+                    System.err.println("Failed to geocode city/province: " + e.getMessage());
+                }
+
+            } else {
+                // Neither coordinates nor city/province provided
+                return new APIGatewayProxyResponseEvent()
+                        .withStatusCode(400)
+                        .withBody("Either coordinates (latitude/longitude) or location (city/province) must be provided");
+            }
+
+            // Set location description if provided
+            if (bodyMap.get("locationDescription") != null) {
+                report.setLocationDescription((String) bodyMap.get("locationDescription"));
+            }
 
             report.setStatus(Report.ReportStatus.PENDING);
             report.setTimestamp(LocalDateTime.now());
@@ -412,6 +515,62 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             return new APIGatewayProxyResponseEvent()
                 .withStatusCode(400)
                 .withBody("Invalid status: " + statusStr);
+        }
+    }
+
+    /**
+     * Retrieves reports filtered by city.
+     * Processes GET requests to /reports/city/{city} endpoint.
+     * City values are case-insensitive.
+     * 
+     * @param city The city to filter by
+     * @return 200 OK with list of reports in the specified city
+     *         400 Bad Request if the city parameter is invalid
+     */
+    private APIGatewayProxyResponseEvent getReportsByCity(String city) {
+        try {
+            if (city == null || city.trim().isEmpty()) {
+                return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(400)
+                    .withBody("City parameter cannot be empty");
+            }
+            
+            List<Report> reports = reportRepository.getReportsByCity(city.trim());
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(200)
+                .withBody(gson.toJson(reports));
+        } catch (IllegalArgumentException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withBody("Invalid city: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Retrieves reports filtered by province.
+     * Processes GET requests to /reports/province/{province} endpoint.
+     * Province values are case-insensitive.
+     * 
+     * @param province The province to filter by
+     * @return 200 OK with list of reports in the specified province
+     *         400 Bad Request if the province parameter is invalid
+     */
+    private APIGatewayProxyResponseEvent getReportsByProvince(String province) {
+        try {
+            if (province == null || province.trim().isEmpty()) {
+                return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(400)
+                    .withBody("Province parameter cannot be empty");
+            }
+            
+            List<Report> reports = reportRepository.getReportsByProvince(province.trim());
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(200)
+                .withBody(gson.toJson(reports));
+        } catch (IllegalArgumentException e) {
+            return new APIGatewayProxyResponseEvent()
+                .withStatusCode(400)
+                .withBody("Invalid province: " + e.getMessage());
         }
     }
 
