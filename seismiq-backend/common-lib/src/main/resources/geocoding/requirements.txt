@@ -1,0 +1,26 @@
+# SeismIQ Geocoding Service Requirements
+# Python dependencies for bidirectional geocoding functionality
+
+# Core data processing
+pandas>=1.5.0
+numpy>=1.21.0
+
+# Machine learning for spatial indexing
+scikit-learn>=1.1.0
+
+# AWS S3 integration (optional - fallback data is provided)
+boto3>=1.26.0
+s3fs>=2022.11.0
+
+# Web service framework (for seismiq_geocoding_service.py)
+flask>=2.2.0
+
+# Type hints support
+typing-extensions>=4.0.0
+
+# For reading parquet files from S3
+pyarrow>=10.0.0
+fastparquet>=0.8.3
+
+# Optional: For better error handling and logging
+requests>=2.28.0

@@ -83,6 +83,12 @@ public class ReportRepository extends DynamoDBRepository {
         if (report.getLastUpdated() != null) {
             item.put("lastUpdated", AttributeValue.builder().s(report.getLastUpdated().format(DATE_FORMATTER)).build());
         }
+        if (report.getCity() != null) {
+            item.put("city", AttributeValue.builder().s(report.getCity()).build());
+        }
+        if (report.getProvince() != null) {
+            item.put("province", AttributeValue.builder().s(report.getProvince()).build());
+        }
         
         putItem(item);
     }
@@ -226,6 +232,40 @@ public class ReportRepository extends DynamoDBRepository {
         return reports;
     }
 
+    public List<Report> getReportsByCity(String city) {
+        ScanRequest request = ScanRequest.builder()
+            .tableName(this.tableName)
+            .filterExpression("city = :city")
+            .expressionAttributeValues(Map.of(":city", AttributeValue.builder().s(city).build()))
+            .build();
+
+        ScanResponse response = dynamoDbClient.scan(request);
+        List<Report> reports = new ArrayList<>();
+
+        for (Map<String, AttributeValue> item : response.items()) {
+            reports.add(mapToReport(item));
+        }
+
+        return reports;
+    }
+
+    public List<Report> getReportsByProvince(String province) {
+        ScanRequest request = ScanRequest.builder()
+            .tableName(this.tableName)
+            .filterExpression("province = :province")
+            .expressionAttributeValues(Map.of(":province", AttributeValue.builder().s(province).build()))
+            .build();
+
+        ScanResponse response = dynamoDbClient.scan(request);
+        List<Report> reports = new ArrayList<>();
+
+        for (Map<String, AttributeValue> item : response.items()) {
+            reports.add(mapToReport(item));
+        }
+
+        return reports;
+    }
+
     public Report updateReportLocation(String reportId, double latitude, double longitude, String description) {
         Map<String, AttributeValue> key = new HashMap<>();
         key.put("reportId", AttributeValue.builder().s(reportId).build());
@@ -299,6 +339,12 @@ public class ReportRepository extends DynamoDBRepository {
         }
         if (item.containsKey("locationDescription")) {
             report.setLocationDescription(item.get("locationDescription").s());
+        }
+        if (item.containsKey("city")) {
+            report.setCity(item.get("city").s());
+        }
+        if (item.containsKey("province")) {
+            report.setProvince(item.get("province").s());
         }
 
         return report;

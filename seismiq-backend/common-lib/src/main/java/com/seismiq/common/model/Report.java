@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
  * and requests during earthquake response operations.
  *
  * @author Sıla Bozkurt
- * @author Ayşe Ece Bilgi
  */
 public class Report {
     public enum ReportStatus {
@@ -31,6 +30,8 @@ public class Report {
     private LocalDateTime timestamp;
     private LocalDateTime lastUpdated;
     private String additionalNotes;
+    private String city;  //ilçe
+    private String province;  //il
 
     // Constructors
     public Report() {}
@@ -42,7 +43,7 @@ public class Report {
      */
     public Report(Report other) {
         this.reportId = other.reportId;
-        this.user = other.user; // Note: User object should be immutable or also implement deep copy if needed
+        this.user = other.user; 
         this.category = other.category;
         this.description = other.description;
         this.location = other.location;
@@ -80,13 +81,12 @@ public class Report {
      * @param currentLocation   Whether this is the user's current location
      * @param latitude          The latitude coordinate
      * @param longitude         The longitude coordinate
-     * @param locationDescription Additional details about the location
      * @param status            The current status of the report
      * @param timestamp         The creation time of the report
      */
     public Report(String reportId, User user, Category category, String description, 
                  String location, boolean currentLocation, double latitude, double longitude,
-                 String locationDescription, ReportStatus status, LocalDateTime timestamp) {
+                ReportStatus status, LocalDateTime timestamp) {
         this.reportId = reportId;
         this.user = user;
         this.category = category;
@@ -95,11 +95,60 @@ public class Report {
         this.currentLocation = currentLocation;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.locationDescription = locationDescription;
         this.status = status;
         this.timestamp = timestamp;
         this.lastUpdated = timestamp;
     }
+
+
+    /**
+     * Constructor with all fields including location coordinates.
+     *
+     * @param reportId           The unique identifier of the report
+     * @param user              The user who created the report
+     * @param category          The category of the report (e.g., MEDICAL_HELP, SHELTER)
+     * @param location          The general location string
+     * @param currentLocation   Whether this is the user's current location
+     * @param status            The current status of the report
+     * @param timestamp         The creation time of the report
+     * @param city              The city (ilçe) of the report
+     * @param province          The province (il) of the report
+     */
+
+    public Report(String reportId, User user, Category category, String description, 
+                String location, boolean currentLocation, ReportStatus status, 
+                LocalDateTime timestamp, String city, String province) {
+        this(reportId, user, category, description, location, currentLocation, status, timestamp);
+        this.city = city;
+        this.province = province;
+        this.latitude = 0;
+        this.longitude = 0;
+    }
+
+    /**
+     * Constructor with all fields including location coordinates.
+     *
+     * @param reportId           The unique identifier of the report
+     * @param user              The user who created the report
+     * @param category          The category of the report (e.g., MEDICAL_HELP, SHELTER)
+     * @param description       The detailed description of the report
+     * @param location          The general location string
+     * @param currentLocation   Whether this is the user's current location
+     * @param latitude          The latitude coordinate
+     * @param longitude         The longitude coordinate
+     * @param status            The current status of the report
+     * @param timestamp         The creation time of the report
+     * @param city              The city (ilçe) of the report
+     * @param province          The province (il) of the report
+     */
+    public Report(String reportId, User user, Category category, String description,
+                 String location, boolean currentLocation, double latitude, double longitude,
+                 ReportStatus status, LocalDateTime timestamp, String city, String province) {
+        this(reportId, user, category, description, location, currentLocation, latitude, longitude, status, timestamp);
+        this.city = city;
+        this.province = province;
+    }
+
 
     // Getters and Setters
     public String getReportId() { return reportId; }
@@ -141,22 +190,18 @@ public class Report {
     public LocalDateTime getLastUpdated() { return lastUpdated; }
     public void setLastUpdated(LocalDateTime lastUpdated) { this.lastUpdated = lastUpdated; }
 
-    public String getAdditionalNotes() { return additionalNotes; }
-    public void setAdditionalNotes(String additionalNotes) { this.additionalNotes = additionalNotes; }
-    
-    /**
-     * Gets the additional info for the report - alias for getAdditionalNotes for backward compatibility
-     * @return The additional information/notes for this report
-     */
-    public String getAdditionalInfo() { 
-        return additionalNotes; 
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getProvince() {return province;}
+    public void setProvince(String province) {this.province = province;}
+
+    public boolean hasCoordinates() {
+        return this.getLatitude() != 0 && this.getLongitude() != 0;
     }
     
-    /**
-     * Sets the additional info for the report - alias for setAdditionalNotes for backward compatibility
-     * @param additionalInfo The additional information/notes for this report
-     */
-    public void setAdditionalInfo(String additionalInfo) { 
-        this.additionalNotes = additionalInfo; 
+    public boolean hasCityProvince() {
+        return this.getCity() != null && this.getProvince() != null;
     }
+    
 }

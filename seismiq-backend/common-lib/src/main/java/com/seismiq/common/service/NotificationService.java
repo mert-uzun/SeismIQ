@@ -24,7 +24,7 @@ public class NotificationService {
     private static final Logger LOGGER = Logger.getLogger(NotificationService.class.getName());
     private final SnsClient snsClient;
     private final String platformApplicationArn;
-    private static final double NOTIFICATION_RADIUS_KM = 1.5;
+    private static final double NOTIFICATION_RADIUS_KM = 10.0;
     private static final int MAX_RETRIES = 3;
     private final Gson gson;
 
@@ -145,8 +145,8 @@ public class NotificationService {
         try {
             if (landmark.getAssociatedReport() != null) {
                 Report report = landmark.getAssociatedReport();
-                if (report.getAdditionalInfo() != null && !report.getAdditionalInfo().trim().isEmpty()) {
-                    return ": " + report.getAdditionalInfo();
+                if (report.getDescription() != null && !report.getDescription().trim().isEmpty()) {
+                    return (": " + report.getDescription());
                 }
             }
         } catch (Exception e) {
@@ -226,8 +226,7 @@ public class NotificationService {
      */
     public boolean isWithinRadius(double userLat, double userLon, 
                                 double landmarkLat, double landmarkLon) {
-        // Haversine formula for distance calculation
-        double earthRadius = 6371; // km
+        double earthRadius = 6371; 
         double dLat = Math.toRadians(landmarkLat - userLat);
         double dLon = Math.toRadians(landmarkLon - userLon);
         
