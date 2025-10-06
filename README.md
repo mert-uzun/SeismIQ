@@ -1,6 +1,6 @@
 # SeismIQ
 
-![SeismIQ Logo](seismiq_llogo_final.png)
+![SeismIQ Logo](Seisimiq_app_logo.png)
 
 ## 🧭 Overview
 
