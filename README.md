@@ -1,5 +1,7 @@
 # SeismIQ
 
+![SeismIQ Logo](seismiq_llogo_final.png)
+
 ## 🧭 Overview
 
 Natural disasters like earthquakes can strike without warning, leaving cities and communities in urgent need of coordination, communication, and resource distribution. In such chaotic environments, time is critical. Rescue operations, humanitarian aid, and survivor outreach efforts must be fast, efficient, and based on accurate, real-time information. Unfortunately, traditional communication infrastructures often collapse or become overloaded, creating serious gaps in coordination.
