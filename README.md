@@ -568,106 +568,138 @@ Session End:
 ###Deployment Architecture
 ![Deployment Architeecture](diagrams/deployment_architecture.png)
 
-##Legend
-_Technology Stack:
-- Backend: Java 21 Lambda (4 services: User, Report, Earthquake, Landmark)
-- AI/ML: Python 3.9+ Lambda (2 services: Kandilli Engine, Twitter Pipeline)
-- Database: DynamoDB (7 tables, pay-per-request)
-- Storage: S3 (geospatial data)
-- Auth: AWS Cognito (JWT tokens)
+## 🗺️ Legend  
+*(from UEP Final Design Document)*  
 
-Key Features:
-- Serverless: All Lambda functions auto-scale 0→1000s
-- TTL: Auto-delete old earthquakes (30min-7days) and tweets (10 years)
-- Scheduled: Kandilli every 5 min, Twitter every 15 min
-- Security: Cognito authorizer, IAM least-privilege
-- Region: us-east-1 (or your region)
-
-External APIs:
-- Kandilli Observatory (earthquake data)
-- X (Twitter) API (social media monitoring)
-- OpenAI GPT-4o mini (text classification)
-- Google Maps (geocoding)
-
-##Architectural Decision Records (ADRs)
-ADR-1: Serverless Architecture (AWS Lambda)
-Decision: Use AWS Lambda instead of EC2 or containers
-
-Why:
-- Disasters create 10x-100x traffic spikes
-- Pay only for actual usage (not idle servers)
-- Auto-scales from 0 to 1000s of executions
-- No server management during crisis
-
-Trade-off: 
-- Cold start latency (50-500ms) vs always-on servers
-- Accepted because disaster response doesn't need millisecond latency
-
-
-###ADR-2: Kandilli Seismological Engine (S-value Calculation)
-Decision: Use AC10 GMPE formula to calculate earthquake impact, not simple magnitude
-
-Why:
-- Scientifically accurate for Turkey region
-- Considers magnitude, depth, distance, offshore status
-- Generates targeted Twitter queries (5x efficiency gain)
-- Auto-expires low-risk earthquakes via TTL
-
-Formula: S = (M - β(M) * log10(R* + 1)) * O
-
-Impact: 
-- Twitter scraping focuses only on high-risk settlements
-- Saves 80% API quota by not searching all of Turkey
-
-
-###ADR-3: Two-Stage Tweet Processing (Real-time + Batch)
-Decision: Process tweets in 2 stages instead of pure real-time
-
-Stage 1 (Real-time, <1s): Clean + TF-IDF → Searchable immediately
-Stage 2 (Batch, ~15min): GPT-4 → Structured features
-
-Why:
-- Emergency coordinators need immediate keyword search
-- GPT-4 API is expensive for per-tweet processing
-- Batch processing = 90% cost reduction
-- Handles GPT-4 rate limits
-
-Result: 
-- Tweets visible in <1 minute (keywords)
-- Full intelligence in ~15 minutes (structured data)
-
-
-###ADR-4: DynamoDB with TTL
-Decision: Use DynamoDB instead of RDS, with automatic TTL
-
-Why:
-- Auto-scales read/write capacity during disasters
-- Pay-per-request (scales to zero cost)
-- TTL auto-deletes old data:
-  - Earthquakes: 30min-7days based on S-value
-  - Tweets: 10 years
-- No manual cleanup needed
-
-Trade-off:
-- No complex SQL joins vs traditional database
-- Accepted because our queries are simple (by PK/GSI)
-
-###ADR-5: Turkish NLP Pipeline (Zemberek + SpaCy + GPT-4o mini)
-Decision: Use 3 NLP tools instead of one
-
-Why:
-- Turkish is agglutinative (complex morphology)
-- Zemberek: Best for Turkish lemmatization
-- SpaCy: Fast tokenization and NER
-- GPT-4o mini: Superior context understanding
-
-Pipeline: Clean → Zemberek → SpaCy → TF-IDF → GPT-4o mini
-
-Result: High accuracy for Turkish emergency language
 ---
-##Technology Stack Summary
-## 🧱 Technology Stack – Quick Reference
-*(from UEP Final Design Document)*
+
+### **Technology Stack**
+
+- **Backend:** Java 21 (AWS Lambda) — *4 services:* User, Report, Earthquake, Landmark  
+- **AI/ML:** Python 3.9+ (AWS Lambda) — *2 services:* Kandilli Engine, Twitter Pipeline  
+- **Database:** AWS DynamoDB (7 tables, pay-per-request model)  
+- **Storage:** AWS S3 (geospatial data)  
+- **Auth:** AWS Cognito (JWT tokens)
+
+---
+
+### **Key Features**
+
+- **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
+- **TTL:** Automatic deletion for old data:  
+  - Earthquakes: *30 minutes – 7 days* (based on S-value)  
+  - Tweets: *10 years*  
+- **Scheduled Tasks:**  
+  - Kandilli Engine runs every **5 minutes**  
+  - Twitter Pipeline runs every **15 minutes**  
+- **Security:** Cognito Authorizer + IAM Least Privilege Access  
+- **Region:** `us-east-1` *(modifiable to your local AWS region)*  
+
+---
+
+### **External APIs**
+
+| **API / Service** | **Purpose** | **Integration Type** |
+|--------------------|--------------|----------------------|
+| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
+| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
+| OpenAI GPT-4o mini | Text classification | REST / HTTPS |
+| Google Maps API | Geocoding and visualization | REST / HTTPS |
+
+---
+
+## 🧩 Architectural Decision Records (ADRs)  
+
+---
+
+### **ADR-1: Serverless Architecture (AWS Lambda)**  
+**Decision:** Use AWS Lambda instead of EC2 or containerized servers.  
+
+**Why:**  
+- Disasters create unpredictable 10×–100× traffic spikes.  
+- Pay only for actual compute usage — no cost for idle time.  
+- Auto-scales from 0 to thousands of concurrent executions.  
+- No manual server management during emergencies.  
+
+**Trade-off:**  
+- Cold start latency (≈50–500 ms) vs always-on servers.  
+- Accepted because *millisecond-level latency is not critical for disaster response.*  
+
+---
+
+### **ADR-2: Kandilli Seismological Engine (S-value Calculation)**  
+**Decision:** Use **AC10 GMPE formula** instead of simple magnitude to calculate earthquake impact.  
+
+**Why:**  
+- Scientifically optimized for Turkey’s geological context.  
+- Considers **magnitude**, **depth**, **distance**, and **offshore status**.  
+- Enables targeted Twitter queries — *5× efficiency improvement.*  
+- Automatically expires low-risk earthquakes using TTL.  
+
+**Formula:**  
+\[
+S = (M - β(M) * \log_{10}(R^* + 1)) * O
+\]
+
+**Impact:**  
+- Focuses Twitter scraping only on **high-risk settlements**.  
+- Saves ~80% of Twitter API quota.  
+
+---
+
+### **ADR-3: Two-Stage Tweet Processing (Real-time + Batch)**  
+**Decision:** Process tweets in **two stages** instead of purely real-time.  
+
+**Stage 1 (Real-time, < 1 s):** Clean + TF-IDF → Immediately searchable  
+**Stage 2 (Batch, ≈ 15 min):** GPT-4 → Structured feature extraction  
+
+**Why:**  
+- Emergency coordinators require **instant keyword visibility**.  
+- GPT-4 API cost is high for per-tweet processing.  
+- Batch mode reduces cost by **~90%** and avoids rate limits.  
+
+**Result:**  
+- Tweets visible in **< 1 minute** for search.  
+- Full semantic intelligence within **~15 minutes**.  
+
+---
+
+### **ADR-4: DynamoDB with TTL**  
+**Decision:** Use **DynamoDB** instead of RDS, leveraging automatic TTL.  
+
+**Why:**  
+- Auto-scales read/write throughput during sudden traffic surges.  
+- Pay-per-request billing minimizes idle cost.  
+- TTL automatically deletes:  
+  - Earthquakes → *30 min – 7 days (S-based)*  
+  - Tweets → *10 years*  
+- No manual cleanup or maintenance needed.  
+
+**Trade-off:**  
+- No complex SQL joins (compared to relational DBs).  
+- Accepted since SeismIQ queries are simple (by **PK/GSI**).  
+
+---
+
+### **ADR-5: Turkish NLP Pipeline (Zemberek + SpaCy + GPT-4o mini)**  
+**Decision:** Combine **three NLP tools** for robust Turkish text processing.  
+
+**Why:**  
+- Turkish is an **agglutinative language** with complex morphology.  
+- **Zemberek:** Advanced Turkish lemmatization and normalization.  
+- **SpaCy:** Fast tokenization + Named-Entity Recognition (NER).  
+- **GPT-4o mini:** Contextual classification and semantic interpretation.  
+
+**Pipeline:**  
+`Clean → Zemberek → SpaCy → TF-IDF → GPT-4o mini`  
+
+**Result:**  
+- High linguistic accuracy for Turkish emergency-related text.  
+- Strong resilience against noise, slang, and informal phrasing.  
+
+---
+
+## Technology Stack – Quick Reference
 
 ---
 
@@ -756,7 +788,6 @@ Result: High accuracy for Turkish emergency language
 ---
 
 ## 📊 Metrics  
-*(from UEP Final Design Document)*  
 
 ---
 
