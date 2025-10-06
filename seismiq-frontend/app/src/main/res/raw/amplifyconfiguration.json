@@ -11,25 +11,14 @@
                 },
                 "CognitoUserPool": {
                     "Default": {
-                        "PoolId": "eu-north-1_WptRe5ixJ",
-                        "AppClientId": "1fvh453dggd7d6d9iisscscjp5",
+                        "PoolId": "eu-north-1_P0EI8jeg4",
+                        "AppClientId": "q7ohjii4veeqpjsu1mn59sf3b",
                         "Region": "eu-north-1"
                     }
                 },
                 "Auth": {
                     "Default": {
-                        "authenticationFlowType": "USER_PASSWORD_AUTH",
-                        "OAuth": {
-                            "WebDomain": "YOUR_AUTH_DOMAIN",
-                            "AppClientId": "1fvh453dggd7d6d9iisscscjp5",
-                            "SignInRedirectURI": "YOUR_SIGN_IN_REDIRECT_URI",
-                            "SignOutRedirectURI": "YOUR_SIGN_OUT_REDIRECT_URI",
-                            "Scopes": [
-                                "email",
-                                "openid",
-                                "profile"
-                            ]
-                        }
+                        "authenticationFlowType": "USER_PASSWORD_AUTH"
                     }
                 }
             }

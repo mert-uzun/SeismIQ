@@ -79,8 +79,24 @@ public class RegisterActivity extends AppCompatActivity {
             // Register with Cognito
             authService.registerUser(username, password, email, name, address, isVolunteer, isSocialWorker)
                     .thenAccept(result -> {
-                        // After successful Cognito registration, create user record in your backend
-                        createUserInBackend(username, email, name, address, isVolunteer, isSocialWorker);
+                        if (result) {
+                            // Registration complete, create user profile in backend
+                            createUserInBackend(username, email, name, address, isVolunteer, isSocialWorker);
+                        } else {
+                            // Email verification required
+                            runOnUiThread(() -> {
+                                progressBar.setVisibility(View.GONE);
+                                buttonRegister.setEnabled(true);
+                                Toast.makeText(RegisterActivity.this, 
+                                    "Registration successful! Please check your email to verify your account before logging in.", 
+                                    Toast.LENGTH_LONG).show();
+                                
+                                // Navigate back to login
+                                Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                                startActivity(intent);
+                                finish();
+                            });
+                        }
                     })
                     .exceptionally(error -> {
                         runOnUiThread(() -> {
@@ -101,16 +117,20 @@ public class RegisterActivity extends AppCompatActivity {
     }
     
     // Create user record in your backend after successful Cognito registration
-    private void createUserInBackend(String userId, String email, String name, String address, 
+    private void createUserInBackend(String username, String email, String name, String address, 
                                     boolean isVolunteer, boolean isSocialWorker) {
-        // Get token from Cognito for authentication
-        authService.getIdToken()
-                .thenAccept(token -> {
-                    // Create user object
-                    User user = new User(userId, name, address, isVolunteer, isSocialWorker);
-                    
-                    // Create API service with auth token
-                    UserApiService apiService = RetrofitClient.getClient(token).create(UserApiService.class);
+        // First get the Cognito user ID, then get the ID token for API authentication
+        authService.getCurrentUserId()
+                .thenCompose(cognitoUserId -> {
+                    // Now get the ID token for API authentication
+                    return authService.getIdToken()
+                            .thenAccept(token -> {
+                                // Create user object with Cognito user ID
+                                User user = new User(cognitoUserId, name, address, isVolunteer, isSocialWorker);
+                                user.setEmail(email); // Set email separately if needed
+                                
+                                // Create API service with auth token
+                                UserApiService apiService = RetrofitClient.getClient(token).create(UserApiService.class);
                     
                     // Call the API to create user
                     apiService.createUser(user).enqueue(new Callback<User>() {
