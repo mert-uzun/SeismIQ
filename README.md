@@ -571,11 +571,6 @@ Session End:
 ![Sequence Diagram - 3](diagrams/Emergency%20Report%20Flow.drawio.png)
 
 
-###Quick Table References
-
-###Deployment Architecture
-![Deployment Architeecture](diagrams/deployment_architecture.png)
-
 ## 🗺️ Legend  
 *(from UEP Final Design Document)*  
 
