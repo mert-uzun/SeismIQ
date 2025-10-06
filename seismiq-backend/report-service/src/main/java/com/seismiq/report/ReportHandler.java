@@ -674,16 +674,18 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
         if (category != null && 
             (category.getCategoryType().equalsIgnoreCase("SHELTER") ||
              category.getCategoryType().equalsIgnoreCase("MEDICAL_HELP") ||
-             category.getCategoryType().equalsIgnoreCase("FOOD_WATER"))) {
+             category.getCategoryType().equalsIgnoreCase("FOOD_WATER") ||
+             category.getCategoryType().equalsIgnoreCase("RESCUE"))) {
             
             // Create request payload
             Map<String, Object> payload = new HashMap<>();
             String landmarkCategory = convertCategoryType(category.getCategoryType());
             payload.put("name", "Emergency " + category.getCategoryType());
-            payload.put("location", report.getLocation());
+            payload.put("location", report.getLocation() != null ? report.getLocation() : 
+                       "Location at " + report.getLatitude() + ", " + report.getLongitude());
             payload.put("category", landmarkCategory);
             payload.put("reportId", report.getReportId());
-            payload.put("userId", report.getUser().getUserId());
+            payload.put("createdBy", report.getUser().getUserId());
             payload.put("latitude", report.getLatitude());
             payload.put("longitude", report.getLongitude());
             
@@ -701,22 +703,46 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
      */
     private void invokeLandmarkLambda(Map<String, Object> payload) {
         try {
-            // For now, we'll just print the payload
-            System.out.println("Would invoke landmark lambda with payload: " + new Gson().toJson(payload));
+            // Create Landmark object from payload
+            com.seismiq.common.model.Landmark landmark = new com.seismiq.common.model.Landmark();
+            landmark.setLandmarkId(UUID.randomUUID().toString());
+            landmark.setName((String) payload.get("name"));
+            landmark.setLocation((String) payload.get("location"));
+            landmark.setCreatedBy((String) payload.get("createdBy"));
             
-            // In a real implementation, you would do:
-            // 1. Get the Lambda function name from environment variable
-            // 2. Create a Lambda client
-            // 3. Convert the payload to JSON
-            // 4. Create an invoke request
-            // 5. Invoke the Lambda function
+            // Set coordinates
+            if (payload.get("latitude") != null) {
+                landmark.setLatitude(((Number) payload.get("latitude")).doubleValue());
+            }
+            if (payload.get("longitude") != null) {
+                landmark.setLongitude(((Number) payload.get("longitude")).doubleValue());
+            }
             
-            // Here we just log that we would have created the landmark
-            System.out.println("Created landmark from report with name: " + payload.get("name"));
+            // Create Category object
+            String categoryStr = (String) payload.get("category");
+            Category landmarkCategory = Category.valueOf(categoryStr);
+            landmark.setCategory(landmarkCategory);
+            
+            // Set reportId if available
+            if (payload.get("reportId") != null) {
+                landmark.setReportId((String) payload.get("reportId"));
+            }
+            
+            // Timestamps and status are set by Landmark constructor
+            // landmark.createdAt and lastUpdated are set in constructor
+            // landmark.isActive is set to true in constructor
+            // landmark.status is set to "ACTIVE" in constructor
+            
+            // Save to DynamoDB via LandmarkRepository
+            com.seismiq.landmark.LandmarkRepository landmarkRepository = new com.seismiq.landmark.LandmarkRepository();
+            landmarkRepository.saveLandmark(landmark);
+            
+            System.out.println("Successfully created landmark: " + landmark.getLandmarkId() + " from report " + payload.get("reportId"));
             
         } catch (Exception e) {
             // Log error but don't fail the report creation
             System.err.println("Failed to create landmark: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -735,6 +761,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             case "SHELTER" -> "SHELTER";
             case "MEDICAL_HELP" -> "MEDICAL_STATION";
             case "FOOD_WATER" -> "FOOD_DISTRIBUTION";
+            case "RESCUE" -> "EMERGENCY_RESCUE";
             default -> "OTHER";
         };
     }

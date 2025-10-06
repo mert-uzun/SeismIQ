@@ -22,7 +22,7 @@ public class AuthService {
                                                    boolean isVolunteer, boolean isSocialWorker) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
 
-        // Create user attributes with only standard Cognito attributes
+        // Create user attributes with standard Cognito attributes
         List<AuthUserAttribute> attributes = new ArrayList<>();
         attributes.add(new AuthUserAttribute(AuthUserAttributeKey.email(), email));
         
@@ -31,8 +31,13 @@ public class AuthService {
             attributes.add(new AuthUserAttribute(AuthUserAttributeKey.name(), name));
         }
         
-        // Note: isVolunteer and isSocialWorker will be stored in your backend database
-        // after successful Cognito registration, not as Cognito user attributes
+        // Add address if provided (standard Cognito attribute - required by schema)
+        if (address != null && !address.trim().isEmpty()) {
+            attributes.add(new AuthUserAttribute(AuthUserAttributeKey.address(), address));
+        }
+        
+        // Note: isVolunteer and isSocialWorker will be stored in DynamoDB backend
+        // after successful Cognito registration (not as Cognito attributes)
         
         AuthSignUpOptions options = AuthSignUpOptions.builder()
                 .userAttributes(attributes)
@@ -218,6 +223,33 @@ public class AuthService {
                 },
                 error -> {
                     Log.e(TAG, "Failed to fetch user ID: " + error.getMessage(), error);
+                    future.completeExceptionally(error);
+                }
+        );
+
+        return future;
+    }
+
+    /**
+     * Get the current user's name from Cognito user attributes
+     */
+    public CompletableFuture<String> getCurrentUserName() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        Amplify.Auth.fetchUserAttributes(
+                attributes -> {
+                    for (AuthUserAttribute attribute : attributes) {
+                        if (attribute.getKey().getKeyString().equals("name")) {
+                            Log.i(TAG, "Retrieved user name: " + attribute.getValue());
+                            future.complete(attribute.getValue());
+                            return;
+                        }
+                    }
+                    // If name attribute not found, use a default
+                    future.complete("User");
+                },
+                error -> {
+                    Log.e(TAG, "Failed to fetch user name: " + error.getMessage(), error);
                     future.completeExceptionally(error);
                 }
         );

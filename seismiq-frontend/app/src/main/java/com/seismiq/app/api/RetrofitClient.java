@@ -7,35 +7,32 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
-    private static final String BASE_URL = "https://w5ezell3x4.execute-api.eu-north-1.amazonaws.com/Prod/";
-    private static Retrofit retrofit = null;
+    private static final String BASE_URL = "https://f1kv8hjhqk.execute-api.eu-north-1.amazonaws.com/Prod/";
 
     public static Retrofit getClient(final String token) {
-        if (retrofit == null) {
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        // Always create a new client with the current token (don't cache)
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+        OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
-            if (token != null && !token.isEmpty()) {
-                httpClient.addInterceptor(chain -> {
-                    Request original = chain.request();
-                    Request request = original.newBuilder()
-                            .header("Authorization", token)
-                            .method(original.method(), original.body())
-                            .build();
-                    return chain.proceed(request);
-                });
-            }
-
-            httpClient.addInterceptor(logging);
-
-            retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .client(httpClient.build())
-                    .build();
+        if (token != null && !token.isEmpty()) {
+            httpClient.addInterceptor(chain -> {
+                Request original = chain.request();
+                Request request = original.newBuilder()
+                        .header("Authorization", "Bearer " + token)
+                        .method(original.method(), original.body())
+                        .build();
+                return chain.proceed(request);
+            });
         }
-        return retrofit;
+
+        httpClient.addInterceptor(logging);
+
+        return new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(httpClient.build())
+                .build();
     }
 }

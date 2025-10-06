@@ -162,6 +162,7 @@ public class RegisterActivity extends AppCompatActivity {
                             });
                         }
                     });
+                            });
                 })
                 .exceptionally(error -> {
                     runOnUiThread(() -> {

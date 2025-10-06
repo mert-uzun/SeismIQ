@@ -2,6 +2,7 @@ package com.seismiq.app.model;
 
 public class User {
     private String userId;
+    private String email;
     private String name;
     private String address;
     private boolean isVolunteer;
@@ -26,6 +27,14 @@ public class User {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getName() {

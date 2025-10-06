@@ -22,9 +22,10 @@ import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.seismiq.app.R;
 import com.seismiq.app.api.EarthquakeApiService;
 import com.seismiq.app.api.LandmarkApiService;
+import com.seismiq.app.api.RetrofitClient;
+import com.seismiq.app.auth.AuthService;
 import com.seismiq.app.model.Earthquake;
 import com.seismiq.app.model.Landmark;
-import com.seismiq.app.util.RetrofitClient;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     private MaterialButton btnLandmarks;
     private MaterialButton btnAll;
 
+    private AuthService authService;
     private EarthquakeApiService earthquakeApiService;
     private LandmarkApiService landmarkApiService;
 
@@ -56,9 +58,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                              ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_map, container, false);
 
-        // Initialize services
-        earthquakeApiService = RetrofitClient.getClient().create(EarthquakeApiService.class);
-        landmarkApiService = RetrofitClient.getClient().create(LandmarkApiService.class);
+        // Initialize AuthService
+        authService = new AuthService();
 
         // Initialize UI components
         toggleGroup = root.findViewById(R.id.toggle_map_view);
@@ -99,9 +100,29 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         LatLng turkey = new LatLng(39.0, 35.0);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(turkey, 6));
 
-        // Load data
-        loadEarthquakes();
-        loadLandmarks();
+        // Get ID token and initialize API services
+        authService.getIdToken()
+            .thenAccept(token -> {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // Initialize services with token
+                        earthquakeApiService = RetrofitClient.getClient(token).create(EarthquakeApiService.class);
+                        landmarkApiService = RetrofitClient.getClient(token).create(LandmarkApiService.class);
+                        
+                        // Load data
+                        loadEarthquakes();
+                        loadLandmarks();
+                    });
+                }
+            })
+            .exceptionally(ex -> {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(requireContext(), "Authentication error: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+                }
+                return null;
+            });
 
         mMap.setOnInfoWindowClickListener(marker -> {
             Object tag = marker.getTag();

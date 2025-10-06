@@ -12,7 +12,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
 
-    private static final String BASE_URL = "https://pl6r0bf3zk.execute-api.eu-north-1.amazonaws.com/Prod/"; // AWS API Gateway endpoint
+    private static final String BASE_URL = "https://f1kv8hjhqk.execute-api.eu-north-1.amazonaws.com/Prod/"; // AWS API Gateway endpoint
     private static Retrofit retrofit = null;
     
     public static Retrofit getClient() {

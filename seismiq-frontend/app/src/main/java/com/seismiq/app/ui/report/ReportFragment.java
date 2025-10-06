@@ -25,6 +25,7 @@ import com.google.android.gms.location.LocationServices;
 import com.seismiq.app.R;
 import com.seismiq.app.api.ReportApiService;
 import com.seismiq.app.api.RetrofitClient;
+import com.seismiq.app.auth.AuthService;
 import com.seismiq.app.databinding.FragmentReportBinding;
 import com.seismiq.app.model.Category;
 import com.seismiq.app.model.Report;
@@ -44,6 +45,7 @@ public class ReportFragment extends Fragment {
     private FragmentReportBinding binding;
     private FusedLocationProviderClient fusedLocationClient;
     private AuthManager authManager;
+    private AuthService authService;
     
     private Spinner categorySpinner;
     private EditText descriptionEditText;
@@ -87,6 +89,7 @@ public class ReportFragment extends Fragment {
         progressBar = binding.progressBarReport;
         
         authManager = new AuthManager(requireContext());
+        authService = new AuthService();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
     }
 
@@ -157,33 +160,38 @@ public class ReportFragment extends Fragment {
             return;
         }
 
-        // Get auth token
-        String token = authManager.getToken();
-        if (token == null || token.isEmpty()) {
-            Toast.makeText(requireContext(), "Not authenticated. Please login.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Create report object
-        Report report = new Report();
-        report.setDescription(description);
-        report.setCategory(mapCategoryToBackend(selectedCategory));
-        report.setLatitude(currentLatitude);
-        report.setLongitude(currentLongitude);
-        
-        // Create a simple user object (in production, fetch from auth)
-        User user = new User();
-        user.setUserId(authManager.getUserId());
-        user.setName(authManager.getUserName());
-        // Note: The backend expects nested user object based on ReportHandler.java
-
         // Show progress
         progressBar.setVisibility(View.VISIBLE);
         submitButton.setEnabled(false);
 
-        // Submit to API
-        ReportApiService apiService = RetrofitClient.getClient(token).create(ReportApiService.class);
-        apiService.createReport(report).enqueue(new Callback<Report>() {
+        // Get ID token and user attributes from Cognito session
+        authService.getIdToken()
+                .thenAccept(token -> {
+                    // Get user info from Amplify
+                    authService.getCurrentUserId()
+                            .thenAccept(userId -> {
+                                authService.getCurrentUserName()
+                                        .thenAccept(userName -> {
+                                            // Create report object
+                                            Report report = new Report();
+                                            report.setDescription(description);
+                                            
+                                            // Set category type (backend expects string)
+                                            String categoryType = mapCategoryToBackend(selectedCategory);
+                                            report.setCategoryType(categoryType);
+                                            
+                                            report.setLatitude(currentLatitude);
+                                            report.setLongitude(currentLongitude);
+                                            
+                                            // Create user object (backend expects user object)
+                                            User user = new User();
+                                            user.setUserId(userId);
+                                            user.setName(userName);
+                                            report.setUser(user);
+
+                    // Submit to API
+                    ReportApiService apiService = RetrofitClient.getClient(token).create(ReportApiService.class);
+                    apiService.createReport(report).enqueue(new Callback<Report>() {
             @Override
             public void onResponse(Call<Report> call, Response<Report> response) {
                 if (getActivity() != null) {
@@ -218,6 +226,45 @@ public class ReportFragment extends Fragment {
                 }
             }
         });
+                                        })
+                                        .exceptionally(error -> {
+                                            if (getActivity() != null) {
+                                                getActivity().runOnUiThread(() -> {
+                                                    progressBar.setVisibility(View.GONE);
+                                                    submitButton.setEnabled(true);
+                                                    Toast.makeText(requireContext(), 
+                                                            "Failed to get user name: " + error.getMessage(), 
+                                                            Toast.LENGTH_SHORT).show();
+                                                });
+                                            }
+                                            return null;
+                                        });
+                            })
+                            .exceptionally(error -> {
+                                if (getActivity() != null) {
+                                    getActivity().runOnUiThread(() -> {
+                                        progressBar.setVisibility(View.GONE);
+                                        submitButton.setEnabled(true);
+                                        Toast.makeText(requireContext(), 
+                                                "Failed to get user ID: " + error.getMessage(), 
+                                                Toast.LENGTH_SHORT).show();
+                                    });
+                                }
+                                return null;
+                            });
+                })
+                .exceptionally(error -> {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            submitButton.setEnabled(true);
+                            Toast.makeText(requireContext(), 
+                                    "Failed to get auth token: " + error.getMessage(), 
+                                    Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                    return null;
+                });
     }
 
     private String mapCategoryToBackend(String frontendCategory) {

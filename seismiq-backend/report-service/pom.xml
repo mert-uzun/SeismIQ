@@ -45,6 +45,11 @@
             <artifactId>common-lib</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.seismiq</groupId>
+            <artifactId>landmark-service</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- JUnit Jupiter dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

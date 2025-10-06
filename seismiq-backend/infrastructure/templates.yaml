@@ -4,14 +4,6 @@ Parameters:
   MobilePushPlatformApplicationArn:
     Type: String
     Description: ARN of the pre-created SNS Platform Application (e.g., arn:aws:sns:...:app/GCM/seismiq-android)
-  CognitoUserPoolId:
-    Type: String
-    Default: "eu-north-1_P0EI8jeg4"
-    Description: Existing Cognito User Pool ID
-  CognitoUserPoolClientId:
-    Type: String
-    Default: "q7ohjii4veeqpjsu1mn59sf3b"
-    Description: Existing Cognito User Pool Client ID
 Description: SeismIQ Backend Services
 
 Globals:
@@ -36,7 +28,9 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn:
-              Fn::Sub: "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
             Identity:
               Header: Authorization
             Type: COGNITO_USER_POOLS
@@ -102,7 +96,43 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
-  # Using existing Cognito User Pool and Client (defined in Parameters section)
+  # Cognito User Pool and Client
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: SeismiqUserPool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: address
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: isVolunteer
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: isSocialWorker
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId:
+        Ref: CognitoUserPool
+      ClientName: SeismiqUserPoolClient
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
 
   # DynamoDB Tables - Using existing tables
   EarthquakesTable:
@@ -472,12 +502,8 @@ Outputs:
   UserPoolId:
     Description: Cognito User Pool ID
     Value:
-      Ref: CognitoUserPoolId
+      Ref: CognitoUserPool
   UserPoolClientId:
     Description: Cognito User Pool Client ID
     Value:
-      Ref: CognitoUserPoolClientId
-  UserPoolArn:
-    Description: Cognito User Pool ARN
-    Value:
-      Fn::Sub: "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
+      Ref: CognitoUserPoolClient

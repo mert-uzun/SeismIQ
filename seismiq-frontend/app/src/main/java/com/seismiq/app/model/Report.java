@@ -5,7 +5,8 @@ import java.util.Date;
 public class Report {
     private String reportId;
     private String userId;
-    private String category;
+    private String categoryType;  // Backend expects categoryType as string
+    private User user;  // Backend expects user object
     private String status;
     private String description;
     private double latitude;
@@ -17,12 +18,12 @@ public class Report {
     public Report() {
     }
 
-    public Report(String reportId, String userId, String category, String status, 
+    public Report(String reportId, String userId, String categoryType, String status, 
                 String description, double latitude, double longitude, 
                 Date createdAt, Date updatedAt) {
         this.reportId = reportId;
         this.userId = userId;
-        this.category = category;
+        this.categoryType = categoryType;
         this.status = status;
         this.description = description;
         this.latitude = latitude;
@@ -48,12 +49,20 @@ public class Report {
         this.userId = userId;
     }
 
-    public String getCategory() {
-        return category;
+    public String getCategoryType() {
+        return categoryType;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
+    public void setCategoryType(String categoryType) {
+        this.categoryType = categoryType;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public String getStatus() {
