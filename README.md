@@ -540,28 +540,34 @@ Session End:
 
 ---
 
-##Design Documents
-###System Context Diagram
-![System Context Diagram](diagrams/system_context_diagram.png)
-###Container Diagram
-![Container Diagram](diagrams/container_diagram.png)
-###Component Diagrams
-![Component Diagrams](diagrams/component_diagram.png)
-###Twitter Pipeline Components
-![Twitter Pipeline Components](diagrams/twittter_pipeline.png)
-###Sequence Diagrams
-![Sequence Diagrams -1](diagrams/sequence_diagram1.png)
-![Sequence Diagrams -2](diagrams/sequence_diagram2.png)
-![Sequence Diagrams -3](diagrams/sequence_diagram3.png)
-![Sequence Diagrams -4](diagrams/sequence_diagram4.png)
-###Twitter Monitoring
-![Twitter Monitoring -1](diagrams/twitter_monitoring1.png)
-![Twitter Monitoring -2](diagrams/twitter_monitoring2.png)
-![Twitter Monitoring -3](diagrams/twitter_monitoring3.png)
-![Twitter Monitoring -4](diagrams/twitter_monitoring4.png)
-###Data Model Essentials
-![Data Model Essentials-1](diagrams/data_model_essentials1.png)
-![Data Model Essentials-2](diagrams/data_model_essentials2.png)
+## Design Documents
+
+### System Context Diagram
+![System Context Diagram](diagrams/System%20Context%20Diagram.drawio.png)
+
+### Container Diagram
+![Container Diagram](diagrams/Container%20Diagram.drawio.png)
+
+### Deployment Diagram
+![Deployment Diagram](diagrams/Deployment%20Diagram.drawio.png)
+
+### Component Diagrams
+![Component Diagrams](diagrams/edm2.drawio.png)
+
+### Data Model Essentials
+![Data Model Essentials - 1](diagrams/DATA%20MODEL%201.drawio.png)
+
+### Twitter Pipeline Components
+![Twitter Pipeline Components](diagrams/Twitter%20Pipeline%20Components.drawio.png)
+
+### Kandilli Engine Components
+![Kandilli Engine Components](diagrams/Kandilli%20Engine%20Components.drawio.png)
+
+### Sequence Diagrams
+![Sequence Diagram - 1](diagrams/Twitter%20-_%20GPT%20features.drawio.png)
+![Sequence Diagram - 2](diagrams/Kandilli%20-_%20Twitter%20Query%20Flow.drawio%20(4).png)
+![Sequence Diagram - 3](diagrams/Emergency%20Report%20Flow.drawio.png)
+
 
 ###Quick Table References
 
