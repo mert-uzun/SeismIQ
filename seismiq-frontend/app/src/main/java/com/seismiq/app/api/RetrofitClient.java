@@ -7,7 +7,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
-    private static final String BASE_URL = "https://pl6r0bf3zk.execute-api.eu-north-1.amazonaws.com/Prod/";
+    private static final String BASE_URL = "https://w5ezell3x4.execute-api.eu-north-1.amazonaws.com/Prod/";
     private static Retrofit retrofit = null;
 
     public static Retrofit getClient(final String token) {

@@ -73,7 +73,6 @@ public class ReportFragment extends Fragment {
 
         initializeViews();
         setupCategorySpinner();
-        setupLocationServices();
         setupClickListeners();
 
         return root;
@@ -100,10 +99,6 @@ public class ReportFragment extends Fragment {
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         categorySpinner.setAdapter(adapter);
-    }
-
-    private void setupLocationServices() {
-        // Location services will check permissions when button is clicked
     }
 
     private void setupClickListeners() {

@@ -16,7 +16,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
 import com.seismiq.app.R;
-import com.seismiq.app.auth.LoginActivity;
+import com.seismiq.app.ui.auth.LoginActivity;
 import com.seismiq.app.databinding.FragmentSettingsBinding;
 import com.seismiq.app.util.AuthManager;
 

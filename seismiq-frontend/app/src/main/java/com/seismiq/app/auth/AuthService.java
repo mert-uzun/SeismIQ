@@ -27,8 +27,11 @@ public class AuthService {
         attributes.add(new AuthUserAttribute(AuthUserAttributeKey.email(), email));
         attributes.add(new AuthUserAttribute(AuthUserAttributeKey.name(), name));
         attributes.add(new AuthUserAttribute(AuthUserAttributeKey.address(), address));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("isVolunteer"), String.valueOf(isVolunteer)));
-        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("isSocialWorker"), String.valueOf(isSocialWorker)));
+        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("custom:isVolunteer"), 
+            String.valueOf(isVolunteer)));
+        attributes.add(new AuthUserAttribute(AuthUserAttributeKey.custom("custom:isSocialWorker"), 
+            String.valueOf(isSocialWorker)));
+
 
         AuthSignUpOptions options = AuthSignUpOptions.builder()
                 .userAttributes(attributes)
