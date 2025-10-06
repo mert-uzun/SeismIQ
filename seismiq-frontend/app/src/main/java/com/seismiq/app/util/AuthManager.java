@@ -15,7 +15,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Utility class to manage authentication tokens and user sessions
+ * Utility class to manage authentication tokens and user sessions.
+ * Supports both static and instance methods for flexibility.
  */
 public class AuthManager {
     
@@ -23,6 +24,10 @@ public class AuthManager {
     private static final String KEY_AUTH_TOKEN = "auth_token";
     private static final String KEY_REFRESH_TOKEN = "refresh_token";
     private static final String KEY_USER_ID = "user_id";
+    private static final String KEY_USER_NAME = "user_name";
+    private static final String KEY_USER_EMAIL = "user_email";
+    
+    private final Context context;
     
     /**
      * Get the current authentication token
@@ -133,9 +138,9 @@ public class AuthManager {
     }
 
     /**
-     * Get the current user ID
+     * Get the current user ID asynchronously
      */
-    public static CompletableFuture<String> getUserId() {
+    public static CompletableFuture<String> getUserIdAsync() {
         CompletableFuture<String> future = new CompletableFuture<>();
 
         Amplify.Auth.fetchAuthSession(
@@ -165,5 +170,89 @@ public class AuthManager {
         );
 
         return future;
+    }
+    
+    // ========== Instance Methods ==========
+    
+    /**
+     * Constructor for instance-based usage
+     */
+    public AuthManager(Context context) {
+        this.context = context;
+    }
+    
+    /**
+     * Get authentication token (instance method)
+     */
+    public String getToken() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token = prefs.getString(KEY_AUTH_TOKEN, null);
+        if (token != null) {
+            return token;
+        }
+        // Fallback to static method
+        return getAuthToken();
+    }
+    
+    /**
+     * Get user ID (instance method, synchronous)
+     */
+    public String getUserId() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_USER_ID, null);
+    }
+    
+    /**
+     * Get user name (instance method)
+     */
+    public String getUserName() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_USER_NAME, "User");
+    }
+    
+    /**
+     * Get user email (instance method)
+     */
+    public String getUserEmail() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_USER_EMAIL, null);
+    }
+    
+    /**
+     * Save user info
+     */
+    public void saveUserInfo(String userId, String userName, String userEmail) {
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+        editor.putString(KEY_USER_ID, userId);
+        editor.putString(KEY_USER_NAME, userName);
+        editor.putString(KEY_USER_EMAIL, userEmail);
+        editor.apply();
+    }
+    
+    /**
+     * Clear authentication data (instance method)
+     */
+    public void clearAuth() {
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+        editor.clear();
+        editor.apply();
+        clearAuthData(); // Also call static method for Amplify
+    }
+    
+    /**
+     * Save a preference
+     */
+    public void savePreference(String key, boolean value) {
+        SharedPreferences.Editor editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit();
+        editor.putBoolean(key, value);
+        editor.apply();
+    }
+    
+    /**
+     * Get a boolean preference
+     */
+    public boolean getPreference(String key, boolean defaultValue) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getBoolean(key, defaultValue);
     }
 }
