@@ -79,24 +79,28 @@ public class RegisterActivity extends AppCompatActivity {
             // Register with Cognito
             authService.registerUser(username, password, email, name, address, isVolunteer, isSocialWorker)
                     .thenAccept(result -> {
-                        if (result) {
-                            // Registration complete, create user profile in backend
-                            createUserInBackend(username, email, name, address, isVolunteer, isSocialWorker);
-                        } else {
-                            // Email verification required
-                            runOnUiThread(() -> {
-                                progressBar.setVisibility(View.GONE);
-                                buttonRegister.setEnabled(true);
+                        runOnUiThread(() -> {
+                            progressBar.setVisibility(View.GONE);
+                            buttonRegister.setEnabled(true);
+                            
+                            if (result) {
+                                // Registration complete without verification (shouldn't happen with email verification enabled)
                                 Toast.makeText(RegisterActivity.this, 
-                                    "Registration successful! Please check your email to verify your account before logging in.", 
-                                    Toast.LENGTH_LONG).show();
+                                    "Registration successful!", 
+                                    Toast.LENGTH_SHORT).show();
                                 
-                                // Navigate back to login
-                                Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
-                                startActivity(intent);
-                                finish();
-                            });
-                        }
+                                // Navigate to verify email screen anyway
+                                navigateToVerifyEmail(username, password, email, name, address, isVolunteer, isSocialWorker);
+                            } else {
+                                // Email verification required (expected flow)
+                                Toast.makeText(RegisterActivity.this, 
+                                    "Registration successful! Please verify your email.", 
+                                    Toast.LENGTH_SHORT).show();
+                                
+                                // Navigate to email verification screen
+                                navigateToVerifyEmail(username, password, email, name, address, isVolunteer, isSocialWorker);
+                            }
+                        });
                     })
                     .exceptionally(error -> {
                         runOnUiThread(() -> {
@@ -116,61 +120,18 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
     
-    // Create user record in your backend after successful Cognito registration
-    private void createUserInBackend(String username, String email, String name, String address, 
-                                    boolean isVolunteer, boolean isSocialWorker) {
-        // First get the Cognito user ID, then get the ID token for API authentication
-        authService.getCurrentUserId()
-                .thenCompose(cognitoUserId -> {
-                    // Now get the ID token for API authentication
-                    return authService.getIdToken()
-                            .thenAccept(token -> {
-                                // Create user object with Cognito user ID
-                                User user = new User(cognitoUserId, name, address, isVolunteer, isSocialWorker);
-                                user.setEmail(email); // Set email separately if needed
-                                
-                                // Create API service with auth token
-                                UserApiService apiService = RetrofitClient.getClient(token).create(UserApiService.class);
-                    
-                    // Call the API to create user
-                    apiService.createUser(user).enqueue(new Callback<User>() {
-                        @Override
-                        public void onResponse(Call<User> call, Response<User> response) {
-                            runOnUiThread(() -> {
-                                progressBar.setVisibility(View.GONE);
-                                buttonRegister.setEnabled(true);
-                                
-                                if (response.isSuccessful()) {
-                                    Toast.makeText(RegisterActivity.this, "Registration successful!", Toast.LENGTH_SHORT).show();
-                                    
-                                    // Navigate to the main activity
-                                    Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                } else {
-                                    Toast.makeText(RegisterActivity.this, "User creation in backend failed", Toast.LENGTH_LONG).show();
-                                }
-                            });
-                        }
-
-                        @Override
-                        public void onFailure(Call<User> call, Throwable t) {
-                            runOnUiThread(() -> {
-                                progressBar.setVisibility(View.GONE);
-                                buttonRegister.setEnabled(true);
-                                Toast.makeText(RegisterActivity.this, "User creation in backend failed: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                            });
-                        }
-                    });
-                            });
-                })
-                .exceptionally(error -> {
-                    runOnUiThread(() -> {
-                        progressBar.setVisibility(View.GONE);
-                        buttonRegister.setEnabled(true);
-                        Toast.makeText(RegisterActivity.this, "Failed to get authentication token: " + error.getMessage(), Toast.LENGTH_LONG).show();
-                    });
-                    return null;
-                });
+    private void navigateToVerifyEmail(String username, String password, String email, 
+                                       String name, String address, 
+                                       boolean isVolunteer, boolean isSocialWorker) {
+        Intent intent = new Intent(RegisterActivity.this, VerifyEmailActivity.class);
+        intent.putExtra("username", username);
+        intent.putExtra("password", password);
+        intent.putExtra("email", email);
+        intent.putExtra("name", name);
+        intent.putExtra("address", address);
+        intent.putExtra("isVolunteer", isVolunteer);
+        intent.putExtra("isSocialWorker", isSocialWorker);
+        startActivity(intent);
+        finish();
     }
 }

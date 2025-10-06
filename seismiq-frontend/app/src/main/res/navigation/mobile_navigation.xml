@@ -33,5 +33,16 @@
         android:id="@+id/navigation_settings"
         android:name="com.seismiq.app.ui.settings.SettingsFragment"
         android:label="@string/title_settings"
-        tools:layout="@layout/fragment_settings" />
+        tools:layout="@layout/fragment_settings">
+        
+        <action
+            android:id="@+id/action_settings_to_edit_profile"
+            app:destination="@id/navigation_edit_profile" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_edit_profile"
+        android:name="com.seismiq.app.ui.settings.EditProfileFragment"
+        android:label="Edit Profile"
+        tools:layout="@layout/fragment_edit_profile" />
 </navigation>

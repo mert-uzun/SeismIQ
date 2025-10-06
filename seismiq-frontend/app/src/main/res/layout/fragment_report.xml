@@ -84,26 +84,96 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="Enter address or use GPS"
+            android:hint="Lat, Lon or address"
             android:inputType="text"
             android:minHeight="48dp"
             android:padding="12dp"
             android:background="@android:drawable/edit_text"
+            android:focusable="false"
+            android:clickable="true"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textViewLocationLabel" />
 
-        <Button
-            android:id="@+id/buttonGetCurrentLocation"
+        <LinearLayout
+            android:id="@+id/locationButtonsContainer"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="Use Current Location"
-            android:textAllCaps="false"
-            style="?attr/materialButtonOutlinedStyle"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/editTextLocation" />
+            app:layout_constraintTop_toBottomOf="@id/editTextLocation">
+
+            <Button
+                android:id="@+id/buttonGetCurrentLocation"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="GPS"
+                android:textAllCaps="false"
+                style="?attr/materialButtonOutlinedStyle" />
+
+            <Button
+                android:id="@+id/buttonSearchLocation"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:text="Search"
+                android:textAllCaps="false"
+                style="?attr/materialButtonOutlinedStyle" />
+
+            <Button
+                android:id="@+id/buttonSelectFromMap"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="Map"
+                android:textAllCaps="false"
+                style="?attr/materialButtonOutlinedStyle" />
+
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/mapCardView"
+            android:layout_width="0dp"
+            android:layout_height="300dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/locationButtonsContainer">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <fragment
+                    android:id="@+id/reportMapFragment"
+                    android:name="com.google.android.gms.maps.SupportMapFragment"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|center_horizontal"
+                    android:layout_margin="16dp"
+                    android:background="#CC000000"
+                    android:padding="8dp"
+                    android:text="Tap on map to select location"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp" />
+
+            </FrameLayout>
+
+        </androidx.cardview.widget.CardView>
 
         <Button
             android:id="@+id/buttonSubmitReport"
@@ -116,7 +186,7 @@
             android:paddingVertical="12dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buttonGetCurrentLocation" />
+            app:layout_constraintTop_toBottomOf="@id/mapCardView" />
 
         <ProgressBar
             android:id="@+id/progressBarReport"

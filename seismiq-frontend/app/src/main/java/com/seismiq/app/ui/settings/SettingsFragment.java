@@ -14,8 +14,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 
 import com.seismiq.app.R;
+import com.seismiq.app.auth.AuthService;
 import com.seismiq.app.ui.auth.LoginActivity;
 import com.seismiq.app.databinding.FragmentSettingsBinding;
 import com.seismiq.app.util.AuthManager;
@@ -28,6 +30,7 @@ public class SettingsFragment extends Fragment {
 
     private FragmentSettingsBinding binding;
     private AuthManager authManager;
+    private AuthService authService;
     
     private TextView userNameTextView;
     private TextView userEmailTextView;
@@ -59,24 +62,48 @@ public class SettingsFragment extends Fragment {
         editProfileButton = binding.buttonEditProfile;
         
         authManager = new AuthManager(requireContext());
+        authService = new AuthService();
     }
 
     private void loadUserInfo() {
-        // Load user information from AuthManager
-        String userName = authManager.getUserName();
-        String userEmail = authManager.getUserEmail();
+        // Load user information from Cognito
+        authService.getUserName()
+                .thenAccept(userName -> {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (userName != null && !userName.isEmpty()) {
+                                userNameTextView.setText(userName);
+                            } else {
+                                userNameTextView.setText("User");
+                            }
+                        });
+                    }
+                })
+                .exceptionally(error -> {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> userNameTextView.setText("User"));
+                    }
+                    return null;
+                });
         
-        if (userName != null && !userName.isEmpty()) {
-            userNameTextView.setText(userName);
-        } else {
-            userNameTextView.setText("User");
-        }
-        
-        if (userEmail != null && !userEmail.isEmpty()) {
-            userEmailTextView.setText(userEmail);
-        } else {
-            userEmailTextView.setText("Not available");
-        }
+        authService.getUserEmail()
+                .thenAccept(userEmail -> {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (userEmail != null && !userEmail.isEmpty()) {
+                                userEmailTextView.setText(userEmail);
+                            } else {
+                                userEmailTextView.setText("Not available");
+                            }
+                        });
+                    }
+                })
+                .exceptionally(error -> {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> userEmailTextView.setText("Not available"));
+                    }
+                    return null;
+                });
         
         // Load saved preferences
         loadSavedPreferences();
@@ -113,10 +140,7 @@ public class SettingsFragment extends Fragment {
         
         // Edit profile button
         editProfileButton.setOnClickListener(v -> {
-            Toast.makeText(requireContext(), 
-                    "Profile editing coming soon", 
-                    Toast.LENGTH_SHORT).show();
-            // TODO: Navigate to profile editing screen
+            Navigation.findNavController(v).navigate(R.id.action_settings_to_edit_profile);
         });
         
         // Logout button

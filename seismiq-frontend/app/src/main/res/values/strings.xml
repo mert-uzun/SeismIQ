@@ -60,4 +60,7 @@
         <item>Other</item>
     </string-array>
     
+    <!-- Google Maps API Key -->
+    <string name="google_maps_key" translatable="false">AIzaSyC7xNca6VK2TtDNEYjUCjgoxtq78x5p3Xo</string>
+    
 </resources>

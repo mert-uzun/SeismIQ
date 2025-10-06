@@ -161,7 +161,17 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
         try {
             Map<String, Object> bodyMap = gson.fromJson(input.getBody(), Map.class);
 
-            String categoryType = (String) bodyMap.get("categoryType");
+            // Handle both direct categoryType and nested category object
+            String categoryType = null;
+            if (bodyMap.containsKey("category") && bodyMap.get("category") != null) {
+                // Frontend sends nested category object (old format)
+                Map<String, Object> categoryMap = (Map<String, Object>) bodyMap.get("category");
+                categoryType = (String) categoryMap.get("categoryType");
+            } else if (bodyMap.containsKey("categoryType")) {
+                // Frontend sends flat categoryType field (new format)
+                categoryType = (String) bodyMap.get("categoryType");
+            }
+            
             if (categoryType == null) {
                 return new APIGatewayProxyResponseEvent()
                         .withStatusCode(400)
@@ -680,7 +690,12 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             // Create request payload
             Map<String, Object> payload = new HashMap<>();
             String landmarkCategory = convertCategoryType(category.getCategoryType());
-            payload.put("name", "Emergency " + category.getCategoryType());
+            
+            // Use a user-friendly name based on category
+            String landmarkName = getCategoryDisplayName(category.getCategoryType());
+            
+            payload.put("name", landmarkName);
+            payload.put("description", report.getDescription() != null ? report.getDescription() : "");
             payload.put("location", report.getLocation() != null ? report.getLocation() : 
                        "Location at " + report.getLatitude() + ", " + report.getLongitude());
             payload.put("category", landmarkCategory);
@@ -692,6 +707,19 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             // Invoke Lambda function
             invokeLandmarkLambda(payload);
         }
+    }
+    
+    /**
+     * Get a user-friendly display name for the landmark based on category
+     */
+    private String getCategoryDisplayName(String categoryType) {
+        return switch (categoryType.toUpperCase()) {
+            case "RESCUE" -> "Emergency Rescue Needed";
+            case "MEDICAL_HELP" -> "Medical Assistance Needed";
+            case "SHELTER" -> "Shelter Needed";
+            case "FOOD_WATER" -> "Food & Water Needed";
+            default -> "Emergency " + categoryType;
+        };
     }
 
     /**
@@ -707,6 +735,7 @@ public class ReportHandler implements RequestHandler<APIGatewayProxyRequestEvent
             com.seismiq.common.model.Landmark landmark = new com.seismiq.common.model.Landmark();
             landmark.setLandmarkId(UUID.randomUUID().toString());
             landmark.setName((String) payload.get("name"));
+            landmark.setDescription((String) payload.get("description"));
             landmark.setLocation((String) payload.get("location"));
             landmark.setCreatedBy((String) payload.get("createdBy"));
             

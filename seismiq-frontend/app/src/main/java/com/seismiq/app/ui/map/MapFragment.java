@@ -211,10 +211,13 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 marker.setVisible(show);
             } else if (show) {
                 String categoryStr = lm.getCategory().toString(); // Convert Category to String
+                String description = lm.getDescription() != null && !lm.getDescription().isEmpty() 
+                        ? lm.getDescription() 
+                        : "No description available";
                 Marker newMarker = mMap.addMarker(new MarkerOptions()
                         .position(pos)
                         .title(lm.getName())
-                        .snippet(categoryStr)
+                        .snippet(description)
                         .icon(BitmapDescriptorFactory.defaultMarker(getLandmarkHue(categoryStr))));
                 newMarker.setTag(lm);
                 landmarkMarkers.put(id, newMarker);

@@ -1,6 +1,7 @@
 package com.seismiq.app.ui.report;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -17,11 +18,21 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.net.PlacesClient;
 import com.seismiq.app.R;
 import com.seismiq.app.api.ReportApiService;
 import com.seismiq.app.api.RetrofitClient;
@@ -40,7 +51,7 @@ import retrofit2.Response;
  * Fragment for submitting emergency reports in the SeismIQ system.
  * Allows users to report various types of emergencies with their current location.
  */
-public class ReportFragment extends Fragment {
+public class ReportFragment extends Fragment implements OnMapReadyCallback {
     
     private FragmentReportBinding binding;
     private FusedLocationProviderClient fusedLocationClient;
@@ -52,10 +63,18 @@ public class ReportFragment extends Fragment {
     private EditText locationEditText;
     private Button submitButton;
     private Button getCurrentLocationButton;
+    private Button searchLocationButton;
+    private Button selectFromMapButton;
     private ProgressBar progressBar;
+    private CardView mapCardView;
+    
+    private GoogleMap googleMap;
+    private Marker selectedMarker;
+    private PlacesClient placesClient;
     
     private double currentLatitude = 0.0;
     private double currentLongitude = 0.0;
+    private String selectedLocationName = "";
     
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
@@ -86,11 +105,27 @@ public class ReportFragment extends Fragment {
         locationEditText = binding.editTextLocation;
         submitButton = binding.buttonSubmitReport;
         getCurrentLocationButton = binding.buttonGetCurrentLocation;
+        searchLocationButton = binding.buttonSearchLocation;
+        selectFromMapButton = binding.buttonSelectFromMap;
         progressBar = binding.progressBarReport;
+        mapCardView = binding.mapCardView;
         
         authManager = new AuthManager(requireContext());
         authService = new AuthService();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
+        
+        // Initialize Google Places API
+        if (!Places.isInitialized()) {
+            Places.initialize(requireContext(), getString(R.string.google_maps_key));
+        }
+        placesClient = Places.createClient(requireContext());
+        
+        // Initialize map
+        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager()
+                .findFragmentById(R.id.reportMapFragment);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
     }
 
     private void setupCategorySpinner() {
@@ -106,7 +141,139 @@ public class ReportFragment extends Fragment {
 
     private void setupClickListeners() {
         getCurrentLocationButton.setOnClickListener(v -> fetchCurrentLocation());
+        searchLocationButton.setOnClickListener(v -> showPlacesSearchDialog());
+        selectFromMapButton.setOnClickListener(v -> toggleMapView());
         submitButton.setOnClickListener(v -> submitReport());
+    }
+    
+    @Override
+    public void onMapReady(@NonNull GoogleMap map) {
+        googleMap = map;
+        
+        // Set map UI settings
+        googleMap.getUiSettings().setZoomControlsEnabled(true);
+        googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+        
+        // Set initial position (Turkey as default)
+        LatLng turkey = new LatLng(39.0, 35.0);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(turkey, 6));
+        
+        // Set map click listener
+        googleMap.setOnMapClickListener(this::onMapClicked);
+    }
+    
+    private void toggleMapView() {
+        if (mapCardView.getVisibility() == View.VISIBLE) {
+            mapCardView.setVisibility(View.GONE);
+            selectFromMapButton.setText("Map");
+        } else {
+            mapCardView.setVisibility(View.VISIBLE);
+            selectFromMapButton.setText("Hide Map");
+            
+            // If we already have coordinates, show them on map
+            if (currentLatitude != 0.0 || currentLongitude != 0.0) {
+                LatLng position = new LatLng(currentLatitude, currentLongitude);
+                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15));
+            }
+        }
+    }
+    
+    private void onMapClicked(LatLng latLng) {
+        currentLatitude = latLng.latitude;
+        currentLongitude = latLng.longitude;
+        
+        // Update location text
+        updateLocationText(String.format(java.util.Locale.US, "%.6f, %.6f", 
+                currentLatitude, currentLongitude));
+        
+        // Clear previous marker
+        if (selectedMarker != null) {
+            selectedMarker.remove();
+        }
+        
+        // Add new marker
+        selectedMarker = googleMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title("Selected Location"));
+        
+        // Move camera
+        googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+        
+        Toast.makeText(requireContext(), "Location selected from map", Toast.LENGTH_SHORT).show();
+    }
+    
+    private void showPlacesSearchDialog() {
+        // Create a simple dialog with an AutoCompleteTextView for Places search
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Search Location");
+        
+        View dialogView = getLayoutInflater().inflate(android.R.layout.select_dialog_item, null);
+        EditText searchEditText = new EditText(requireContext());
+        searchEditText.setHint("Enter place name or address");
+        searchEditText.setPadding(50, 40, 50, 40);
+        
+        builder.setView(searchEditText);
+        builder.setPositiveButton("Search", (dialog, which) -> {
+            String searchQuery = searchEditText.getText().toString().trim();
+            if (!searchQuery.isEmpty()) {
+                performPlacesSearch(searchQuery);
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
+    }
+    
+    private void performPlacesSearch(String query) {
+        // For now, use a simple geocoding approach via Places API
+        // In production, you'd use the full Places Autocomplete API
+        
+        // Show a simple implementation using Geocoder as fallback
+        try {
+            android.location.Geocoder geocoder = new android.location.Geocoder(requireContext());
+            java.util.List<android.location.Address> addresses = geocoder.getFromLocationName(query, 1);
+            
+            if (addresses != null && !addresses.isEmpty()) {
+                android.location.Address address = addresses.get(0);
+                currentLatitude = address.getLatitude();
+                currentLongitude = address.getLongitude();
+                
+                String locationText = address.getAddressLine(0);
+                if (locationText == null || locationText.isEmpty()) {
+                    locationText = String.format(java.util.Locale.US, "%.6f, %.6f", 
+                            currentLatitude, currentLongitude);
+                }
+                
+                updateLocationText(locationText);
+                
+                // Update map if visible
+                if (mapCardView.getVisibility() == View.VISIBLE && googleMap != null) {
+                    LatLng position = new LatLng(currentLatitude, currentLongitude);
+                    
+                    if (selectedMarker != null) {
+                        selectedMarker.remove();
+                    }
+                    selectedMarker = googleMap.addMarker(new MarkerOptions()
+                            .position(position)
+                            .title(locationText));
+                    
+                    googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15));
+                }
+                
+                Toast.makeText(requireContext(), "Location found: " + locationText, 
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Location not found. Try a different search.", 
+                        Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "Search error: " + e.getMessage(), 
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void updateLocationText(String text) {
+        locationEditText.setText(text);
+        selectedLocationName = text;
     }
 
     private void fetchCurrentLocation() {
@@ -128,10 +295,25 @@ public class ReportFragment extends Fragment {
                         currentLatitude = location.getLatitude();
                         currentLongitude = location.getLongitude();
                         
-                        String locationText = String.format(java.util.Locale.US, "Lat: %.6f, Lon: %.6f", 
+                        String locationText = String.format(java.util.Locale.US, "%.6f, %.6f", 
                                 currentLatitude, currentLongitude);
-                        locationEditText.setText(locationText);
-                        Toast.makeText(requireContext(), "Location obtained", Toast.LENGTH_SHORT).show();
+                        updateLocationText(locationText);
+                        
+                        // Update map if visible
+                        if (mapCardView.getVisibility() == View.VISIBLE && googleMap != null) {
+                            LatLng position = new LatLng(currentLatitude, currentLongitude);
+                            
+                            if (selectedMarker != null) {
+                                selectedMarker.remove();
+                            }
+                            selectedMarker = googleMap.addMarker(new MarkerOptions()
+                                    .position(position)
+                                    .title("Current Location"));
+                            
+                            googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 15));
+                        }
+                        
+                        Toast.makeText(requireContext(), "Current location obtained", Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(requireContext(), "Unable to get location", Toast.LENGTH_SHORT).show();
                     }

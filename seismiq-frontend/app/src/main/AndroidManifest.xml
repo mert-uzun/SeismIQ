@@ -38,6 +38,7 @@
 
         <activity android:name=".MainActivity" />
         <activity android:name=".ui.auth.RegisterActivity" />
+        <activity android:name=".ui.auth.VerifyEmailActivity" />
     </application>
 
 </manifest>

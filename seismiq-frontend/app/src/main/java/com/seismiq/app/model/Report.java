@@ -1,29 +1,46 @@
 package com.seismiq.app.model;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.Date;
 
 public class Report {
     private String reportId;
     private String userId;
-    private String categoryType;  // Backend expects categoryType as string
+    
+    // For receiving: backend sends nested category object
+    @SerializedName("category")
+    private Category categoryObject;
+    
+    // For sending: backend expects flat categoryType string
+    private String categoryType;
+    
     private User user;  // Backend expects user object
     private String status;
     private String description;
+    private String location;
     private double latitude;
     private double longitude;
-    private Date createdAt;
+    
+    @SerializedName("timestamp")
+    private Date createdAt;  // Backend sends "timestamp", we map it to createdAt
+    
+    @SerializedName("lastUpdated")
     private Date updatedAt;
 
     // Default constructor for Gson
     public Report() {
     }
 
-    public Report(String reportId, String userId, String categoryType, String status, 
+    public Report(String reportId, String userId, Category category, String status, 
                 String description, double latitude, double longitude, 
                 Date createdAt, Date updatedAt) {
         this.reportId = reportId;
         this.userId = userId;
-        this.categoryType = categoryType;
+        this.categoryObject = category;
+        if (category != null) {
+            this.categoryType = category.getCategoryType();
+        }
         this.status = status;
         this.description = description;
         this.latitude = latitude;
@@ -49,12 +66,32 @@ public class Report {
         this.userId = userId;
     }
 
-    public String getCategoryType() {
-        return categoryType;
+    public Category getCategory() {
+        return categoryObject;
     }
 
+    public void setCategory(Category category) {
+        this.categoryObject = category;
+        if (category != null) {
+            this.categoryType = category.getCategoryType();
+        }
+    }
+    
+    // Get category type - check both fields for compatibility
+    public String getCategoryType() {
+        if (categoryType != null) {
+            return categoryType;
+        }
+        return categoryObject != null ? categoryObject.getCategoryType() : null;
+    }
+    
+    // Set category from string - sets the flat field for API submission
     public void setCategoryType(String categoryType) {
         this.categoryType = categoryType;
+        // Also create category object for internal use
+        if (categoryType != null) {
+            this.categoryObject = Category.valueOf(categoryType);
+        }
     }
 
     public User getUser() {
@@ -79,6 +116,14 @@ public class Report {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public double getLatitude() {

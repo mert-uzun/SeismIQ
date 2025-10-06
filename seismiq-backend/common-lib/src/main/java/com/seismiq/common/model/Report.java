@@ -159,6 +159,11 @@ public class Report {
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
+    
+    // Helper method to expose categoryType as a JSON field for frontend compatibility
+    public String getCategoryType() { 
+        return category != null ? category.getCategoryType() : null; 
+    }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

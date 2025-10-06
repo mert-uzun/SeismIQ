@@ -1,15 +1,27 @@
 package com.seismiq.app.model;
 
+import com.google.gson.annotations.SerializedName;
+
+import java.util.Date;
+
 public class Landmark {
     private String landmarkId;
     private String name;
     private Category category;
     private String description;
+    private String location;
     private double latitude;
     private double longitude;
     private String reportId;
     private String geohash;
     private String status;
+    private String createdBy;
+    
+    @SerializedName("createdAt")
+    private Date createdAt;
+    
+    @SerializedName("lastUpdated")
+    private Date lastUpdated;
 
     // Default constructor for Gson
     public Landmark() {
@@ -118,5 +130,37 @@ public class Landmark {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Date getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(Date lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 }

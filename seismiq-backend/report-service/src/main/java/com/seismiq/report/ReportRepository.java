@@ -54,8 +54,8 @@ public class ReportRepository extends DynamoDBRepository {
         
         if (report.getCategory() != null) {
             Map<String, AttributeValue> categoryMap = Map.of(
-                "categoryId", AttributeValue.builder().s(report.getCategory().getCategoryID()).build(),
-                "type", AttributeValue.builder().s(report.getCategory().getCategoryType()).build()
+                "categoryID", AttributeValue.builder().s(report.getCategory().getCategoryID()).build(),
+                "categoryType", AttributeValue.builder().s(report.getCategory().getCategoryType()).build()
             );
             item.put("category", AttributeValue.builder().m(categoryMap).build());
         }
@@ -297,53 +297,82 @@ public class ReportRepository extends DynamoDBRepository {
     private Report mapToReport(Map<String, AttributeValue> item) {
         // Create a user from the nested map first
         User user = null;
-        if (item.containsKey("user")) {
+        if (item.containsKey("user") && item.get("user").m() != null) {
             Map<String, AttributeValue> userMap = item.get("user").m();
             user = new User();
-            user.setUserId(userMap.get("userId").s());
-            user.setName(userMap.get("name").s());
-            if (userMap.containsKey("address")) {
+            if (userMap.containsKey("userId") && userMap.get("userId") != null) {
+                user.setUserId(userMap.get("userId").s());
+            }
+            if (userMap.containsKey("name") && userMap.get("name") != null) {
+                user.setName(userMap.get("name").s());
+            }
+            if (userMap.containsKey("address") && userMap.get("address") != null) {
                 user.setAddress(userMap.get("address").s());
             }
-            user.setVolunteer(userMap.get("isVolunteer").bool());
-            user.setSocialWorker(userMap.get("isSocialWorker").bool());
+            if (userMap.containsKey("isVolunteer") && userMap.get("isVolunteer") != null) {
+                user.setVolunteer(userMap.get("isVolunteer").bool());
+            }
+            if (userMap.containsKey("isSocialWorker") && userMap.get("isSocialWorker") != null) {
+                user.setSocialWorker(userMap.get("isSocialWorker").bool());
+            }
         }
 
         Category category = null;
-        if(item.containsKey("category")){
+        if(item.containsKey("category") && item.get("category").m() != null){
             Map<String, AttributeValue> categoryMap = item.get("category").m();
-            category = new Category(
-                categoryMap.get("categoryID").s(),
-                categoryMap.get("categoryType").s()
-            );
+            if (categoryMap.containsKey("categoryID") && categoryMap.get("categoryID") != null &&
+                categoryMap.containsKey("categoryType") && categoryMap.get("categoryType") != null) {
+                category = new Category(
+                    categoryMap.get("categoryID").s(),
+                    categoryMap.get("categoryType").s()
+                );
+            }
         }
 
         // Create the report with all required fields
+        LocalDateTime timestamp = LocalDateTime.now(); // Default to now if not present
+        if (item.containsKey("timestamp") && item.get("timestamp") != null) {
+            try {
+                timestamp = LocalDateTime.parse(item.get("timestamp").s(), DATE_FORMATTER);
+            } catch (Exception e) {
+                // If parsing fails, use current time
+                timestamp = LocalDateTime.now();
+            }
+        }
+        
         Report report = new Report(
             item.get("reportId").s(),
             user,
             category,
-            item.containsKey("description") ? item.get("description").s() : null,
-            item.containsKey("location") ? item.get("location").s() : null,
-            item.containsKey("isCurrentLocation") && item.get("isCurrentLocation").bool(),
-            item.containsKey("status") ? Report.ReportStatus.valueOf(item.get("status").s()) : Report.ReportStatus.PENDING,
-            LocalDateTime.parse(item.get("timestamp").s(), DATE_FORMATTER)
+            item.containsKey("description") && item.get("description") != null ? item.get("description").s() : null,
+            item.containsKey("location") && item.get("location") != null ? item.get("location").s() : null,
+            item.containsKey("isCurrentLocation") && item.get("isCurrentLocation") != null && item.get("isCurrentLocation").bool(),
+            item.containsKey("status") && item.get("status") != null ? Report.ReportStatus.valueOf(item.get("status").s()) : Report.ReportStatus.PENDING,
+            timestamp
         );
 
-        // Set location coordinates and description
-        if (item.containsKey("latitude")) {
-            report.setLatitude(Double.parseDouble(item.get("latitude").n()));
+        // Set location coordinates and description with null safety
+        if (item.containsKey("latitude") && item.get("latitude") != null) {
+            try {
+                report.setLatitude(Double.parseDouble(item.get("latitude").n()));
+            } catch (Exception e) {
+                // If parsing fails, leave as default 0.0
+            }
         }
-        if (item.containsKey("longitude")) {
-            report.setLongitude(Double.parseDouble(item.get("longitude").n()));
+        if (item.containsKey("longitude") && item.get("longitude") != null) {
+            try {
+                report.setLongitude(Double.parseDouble(item.get("longitude").n()));
+            } catch (Exception e) {
+                // If parsing fails, leave as default 0.0
+            }
         }
-        if (item.containsKey("locationDescription")) {
+        if (item.containsKey("locationDescription") && item.get("locationDescription") != null) {
             report.setLocationDescription(item.get("locationDescription").s());
         }
-        if (item.containsKey("city")) {
+        if (item.containsKey("city") && item.get("city") != null) {
             report.setCity(item.get("city").s());
         }
-        if (item.containsKey("province")) {
+        if (item.containsKey("province") && item.get("province") != null) {
             report.setProvince(item.get("province").s());
         }
 

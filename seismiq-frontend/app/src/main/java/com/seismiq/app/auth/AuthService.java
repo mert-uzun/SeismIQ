@@ -257,4 +257,32 @@ public class AuthService {
         return future;
     }
 
+    public CompletableFuture<String> getUserEmail() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        Amplify.Auth.fetchUserAttributes(
+                attributes -> {
+                    for (AuthUserAttribute attribute : attributes) {
+                        if (attribute.getKey().getKeyString().equals("email")) {
+                            Log.i(TAG, "Retrieved user email: " + attribute.getValue());
+                            future.complete(attribute.getValue());
+                            return;
+                        }
+                    }
+                    // If email attribute not found
+                    future.complete(null);
+                },
+                error -> {
+                    Log.e(TAG, "Failed to fetch user email: " + error.getMessage(), error);
+                    future.completeExceptionally(error);
+                }
+        );
+
+        return future;
+    }
+
+    public CompletableFuture<String> getUserName() {
+        return getCurrentUserName();
+    }
+
 }

@@ -217,6 +217,7 @@ public class LandmarkRepository {
         // Set associated report if exists
         if (item.containsKey("associatedReportId")) {
             // TODO: Implement report retrieval from Report service
+            // not needed anymore !!! leaving this for future implementations (maybe)
             // This would require cross-service communication
         }
         
