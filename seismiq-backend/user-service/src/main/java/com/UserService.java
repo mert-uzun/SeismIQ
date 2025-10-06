@@ -1,5 +1,7 @@
 package com;
 
+import java.util.List;
+
 import com.seismiq.common.model.User;
 import com.seismiq.user.UserRepository;
 
@@ -59,6 +61,14 @@ public class UserService {
 
     public void deleteUserProfile(String userId){
         userRepository.deleteUser(userId);
+    }
+    
+    /**
+     * Get all users for notification purposes
+     * @return List of all users
+     */
+    public List<User> getAllUsers() {
+        return userRepository.getAllUsers();
     }
 
     /**

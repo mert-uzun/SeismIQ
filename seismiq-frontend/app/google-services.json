@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "367894095061",
+    "project_id": "seismiq-d985a",
+    "storage_bucket": "seismiq-d985a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:367894095061:android:c02b2d3001fc7d3346ee5c",
+        "android_client_info": {
+          "package_name": "com.seismiq"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyM2hxb8gC3ZqKIvV0EMRULQ1kYpRTKrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

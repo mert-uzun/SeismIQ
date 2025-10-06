@@ -1,5 +1,6 @@
 package com.seismiq.app.auth;
 
+import android.content.Context;
 import android.util.Log;
 
 import com.amplifyframework.auth.AuthUserAttribute;
@@ -9,10 +10,18 @@ import com.amplifyframework.auth.cognito.result.AWSCognitoAuthSignOutResult;
 import com.amplifyframework.auth.options.AuthSignOutOptions;
 import com.amplifyframework.auth.options.AuthSignUpOptions;
 import com.amplifyframework.core.Amplify;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.seismiq.app.api.RetrofitClient;
+import com.seismiq.app.api.UserApiService;
+import com.seismiq.app.model.User;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class AuthService {
     private static final String TAG = "AuthService";
@@ -92,6 +101,12 @@ public class AuthService {
                     if (result.getNextStep() != null) {
                         Log.i(TAG, "Additional step required: " + result.getNextStep().getSignInStep());
                     }
+                    
+                    // If login successful, collect and send FCM token
+                    if (result.isSignedIn()) {
+                        updateFCMTokenAfterLogin();
+                    }
+                    
                     future.complete(result.isSignedIn());
                 },
                 error -> {
@@ -223,6 +238,70 @@ public class AuthService {
         );
 
         return future;
+    }
+
+    /**
+     * Update FCM token after successful login
+     * This method is called automatically after login to ensure notification delivery
+     */
+    private void updateFCMTokenAfterLogin() {
+        // Get FCM token and send to backend
+        FirebaseMessaging.getInstance().getToken()
+            .addOnCompleteListener(task -> {
+                if (!task.isSuccessful()) {
+                    Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+                    return;
+                }
+
+                // Get new FCM Registration Token
+                String token = task.getResult();
+                Log.d(TAG, "FCM Token retrieved: " + token);
+
+                // Send token to backend
+                sendTokenToBackend(token);
+            });
+    }
+
+    /**
+     * Send FCM token to backend for user profile update
+     */
+    private void sendTokenToBackend(String fcmToken) {
+        getCurrentUserId()
+            .thenCompose(userId -> 
+                getIdToken()
+                    .thenAccept(authToken -> {
+                        try {
+                            UserApiService apiService = RetrofitClient.getClient(authToken).create(UserApiService.class);
+                            
+                            // Create user object with device token
+                            User user = new User();
+                            user.setUserId(userId);
+                            user.setDeviceToken(fcmToken);
+                            
+                            apiService.updateUser(userId, user).enqueue(new Callback<User>() {
+                                @Override
+                                public void onResponse(Call<User> call, Response<User> response) {
+                                    if (response.isSuccessful()) {
+                                        Log.i(TAG, "FCM token updated successfully for user: " + userId);
+                                    } else {
+                                        Log.w(TAG, "Failed to update FCM token. Response code: " + response.code());
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<User> call, Throwable t) {
+                                    Log.e(TAG, "Error updating FCM token: " + t.getMessage());
+                                }
+                            });
+                        } catch (Exception e) {
+                            Log.e(TAG, "Exception sending FCM token to backend: " + e.getMessage());
+                        }
+                    })
+            )
+            .exceptionally(error -> {
+                Log.e(TAG, "Failed to get user info for FCM token update: " + error.getMessage());
+                return null;
+            });
     }
 
 }

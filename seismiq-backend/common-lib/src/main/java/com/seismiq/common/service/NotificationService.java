@@ -38,8 +38,8 @@ public class NotificationService {
             .build();
             
         // Get platform ARN from environment or use default
-        this.platformApplicationArn = System.getenv("ANDROID_PLATFORM_APPLICATION_ARN") != null ? 
-            System.getenv("ANDROID_PLATFORM_APPLICATION_ARN") : 
+        this.platformApplicationArn = System.getenv("PLATFORM_APP_ARN") != null ? 
+            System.getenv("PLATFORM_APP_ARN") : 
             "arn:aws:sns:eu-north-1:account-id:app/GCM/SeismIQApp";
             
         this.gson = new Gson();
