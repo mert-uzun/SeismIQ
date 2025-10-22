@@ -9,9 +9,7 @@
 - [🏗️ Design Documents (C4 Model)](#design-documents-c4-model)
 - [🧱 Technologies Used](#-technologies-used)
 - [📂 Project Structure](#-project-structure)
-- [🚀 Getting Started](#-getting-started)
-    - [Zemberek NLP Setup](#zemberek-nlp)
-- [📱 App Launch & Authentication Flow](#-app-launch--authentication-flow)
+- [📱 Application Flow](#-app-launch--authentication-flow)
     - [Step 1: Application Entry](#-step-1-application-entry)
     - [Step 2: Main Interface (MainActivity)](#-step-2-main-interface-mainactivity)
     - [Step 3: Interactive Map Experience](#-step-3-map-visualization-flow)
@@ -19,7 +17,7 @@
     - [Step 5: Landmark Management System](#-step-5-landmark-creation-flow)
     - [Step 6: Push Notification Flow](#-step-6-push-notification-flow)
     - [Step 7: Real-time Data Management](#step-7-real-time-data-management)
-    - [Step 8: AI/ML Integration Workflow](#step-8-aiml-integration-workflow)
+    - [Step 8: AI Integration Workflow](#step-8-aiml-integration-workflow)
     - [Step 9: Session & Security Flow](#-step-9-session--security-flow)
 - [🌐 API Endpoints](#-api-endpoints)
     - [Authentication](#authentication)
@@ -38,7 +36,7 @@
 - [⚙️ Technology Stack – Quick Reference](#technology-stack--quick-reference)
     - [Frontend](#frontend)
     - [Backend (Microservices)](#backend-microservices)
-    - [AI/ML Intelligence](#aiml-intelligence)
+    - [AI Intelligence](#aiml-intelligence)
     - [Data Storage](#data-storage)
     - [Infrastructure](#infrastructure)
     - [External Services](#external-services)
@@ -50,7 +48,7 @@
 - [📜 License](#-license)
 - [❤️ Acknowledgments](#-acknowledgments)
 
-## 🧭 Overview
+## 💡 Overview
 
 Natural disasters like earthquakes can strike without warning, leaving cities and communities in urgent need of coordination, communication, and resource distribution. In such chaotic environments, time is critical. Rescue operations, humanitarian aid, and survivor outreach efforts must be fast, efficient, and based on accurate, real-time information. Unfortunately, traditional communication infrastructures often collapse or become overloaded, creating serious gaps in coordination.
 
@@ -82,10 +80,9 @@ In summary, this project aims to:
 
 -Provide a scalable, modular, and cloud-native architecture for humanitarian applications
 
-
 ---
 
-## **🚀 Features**
+## **🎯 Features**
 
 - 📍 Location-based help/resource reporting
 - 🧠 Tweet analysis for detecting emergency requests (via NLP)
@@ -93,6 +90,36 @@ In summary, this project aims to:
 - 🗺️ Resource visualization: cranes, food spots, shelters, etc.
 - 🧩 Modular backend using AWS Lambda & API Gateway
 - 📲 Android mobile app with interactive maps and reporting
+
+---
+
+## 🏗️ Design Documents (C4 Model)
+
+### System Context Diagram
+![System Context Diagram](diagrams/System%20Context%20Diagram.drawio.png)
+
+### Container Diagram
+![Container Diagram](diagrams/Container%20Diagram.drawio.png)
+
+### Deployment Diagram
+![Deployment Diagram](diagrams/Deployment%20Diagram.drawio.png)
+
+### Component Diagrams
+![Component Diagrams](diagrams/edm2.drawio.png)
+
+### Data Model Essentials
+![Data Model Essentials - 1](diagrams/DATA%20MODEL%201.drawio.png)
+
+### Twitter Pipeline Components
+![Twitter Pipeline Components](diagrams/Twitter%20Pipeline%20Components.drawio.png)
+
+### Kandilli Engine Components
+![Kandilli Engine Components](diagrams/Kandilli%20Engine%20Components.drawio.png)
+
+### Sequence Diagrams
+![Sequence Diagram - 1](diagrams/Twitter%20-_%20GPT%20features.drawio.png)
+![Sequence Diagram - 2](diagrams/Kandilli%20-_%20Twitter%20Query%20Flow.drawio%20(4).png)
+![Sequence Diagram - 3](diagrams/Emergency%20Report%20Flow.drawio.png)
 
 ---
 
@@ -182,88 +209,6 @@ SeismIQ/
 ├── start_seismiq.sh       # Deployment script
 └── LICENSE                # MIT License
 ```
---
-## ⚙️ Getting Started
-
-### Used Technologies
-
-- Java + Android Studio (for mobile app)  
-- Python 3.9+ (for ML pipelines)  
-- AWS CLI + credentials 
-- Firebase account
-
----
-
-## Set Up
-
-### Zemberek NLP
-
-1. Download the latest version of `zemberek-full.jar` from the official drive:  
-   [Zemberek Original Drive](https://drive.google.com/drive/u/0/folders/0B9TrB39LQKZWX1RSang3M1VkYjQ?resourcekey=0-uFoTlb0PoP0otWan6JkCLg)
-2. Place the downloaded `.jar` file into the following directory:  
-   `twitter/zemberek-full.jar` (relative to the project root)
-3. Ensure it is not tracked by Git by confirming `.gitignore` includes the correct entry.
-
----
-
-## 🌐 API Endpoints
-
-### Authentication
-| Method | Endpoint            | Description                           | Auth Required |
-|--------|---------------------|---------------------------------------|---------------|
-| POST   | `/users`            | Register a new user                   | ❌            |
-| POST   | `/users/login`      | User login                           | ❌            |
-
-### User Management
-| Method | Endpoint            | Description                           | Auth Required |
-|--------|---------------------|---------------------------------------|---------------|
-| GET    | `/users/{userId}`   | Get user profile                     | ✅            |
-| PUT    | `/users/{userId}`   | Update user profile (includes FCM token) | ✅        |
-| DELETE | `/users/{userId}`   | Delete user account                  | ✅            |
-
-### Earthquake Data
-| Method | Endpoint                  | Description                         | Auth Required |
-|--------|---------------------------|-------------------------------------|---------------|
-| GET    | `/earthquakes`            | List all earthquakes               | ✅            |
-| POST   | `/earthquakes`            | Create new earthquake record       | ✅            |
-| GET    | `/earthquakes/{earthquakeId}` | Get specific earthquake        | ✅            |
-| GET    | `/earthquakes/location`   | Get earthquakes by location        | ✅            |
-
-### Reports Management
-| Method | Endpoint                     | Description                         | Auth Required |
-|--------|------------------------------|-------------------------------------|---------------|
-| GET    | `/reports`                   | List all user-submitted reports     | ✅            |
-| POST   | `/reports`                   | Submit a new report                 | ✅            |
-| GET    | `/reports/{reportId}`        | Get specific report details         | ✅            |
-| PUT    | `/reports/{reportId}`        | Update report                       | ✅            |
-| DELETE | `/reports/{reportId}`        | Delete report                       | ✅            |
-| PUT    | `/reports/{reportId}/status` | Update report status                | ✅            |
-| PUT    | `/reports/{reportId}/location` | Update report location            | ✅            |
-| GET    | `/users/{userId}/reports`    | Get reports by specific user        | ✅            |
-| GET    | `/reports/category/{category}` | Get reports by category           | ✅            |
-| GET    | `/reports/status/{status}`   | Get reports by status               | ✅            |
-
-### Landmarks Management
-| Method | Endpoint                | Description                           | Auth Required |
-|--------|-------------------------|---------------------------------------|---------------|
-| GET    | `/landmarks`            | List all landmarks                    | ✅            |
-| POST   | `/landmarks`            | Create new landmark (triggers notifications) | ✅    |
-| GET    | `/landmarks/{landmarkId}` | Get specific landmark details       | ✅            |
-| PUT    | `/landmarks/{landmarkId}` | Update landmark                     | ✅            |
-| DELETE | `/landmarks/{landmarkId}` | Delete landmark                     | ✅            |
-
-### 🔐 Authentication Notes
-- **Auth Required (✅)**: Endpoints require AWS Cognito JWT token in Authorization header
-- **No Auth (❌)**: Public endpoints for registration and login
-- **Base URL**: `https://{api-gateway-id}.execute-api.eu-north-1.amazonaws.com/Prod/`
-
-### 📱 Special Features
-- **FCM Integration**: PUT `/users/{userId}` supports updating Firebase device tokens for push notifications
-- **Location-Based**: Landmarks creation automatically triggers notifications to nearby users
-- **Real-time Updates**: Earthquake and report data updates are streamed through DynamoDB
-- **Geospatial Queries**: Location-based filtering for earthquakes and landmarks
-
-> 🔐 JWT or Firebase token required for protected endpoints
 
 ---
 
@@ -590,72 +535,64 @@ Session End:
 
 ---
 
-## Design Documents (C4 Model)
+## 🌐 API Endpoints
 
-### System Context Diagram
-![System Context Diagram](diagrams/System%20Context%20Diagram.drawio.png)
+### Authentication
+| Method | Endpoint            | Description                           | Auth Required |
+|--------|---------------------|---------------------------------------|---------------|
+| POST   | `/users`            | Register a new user                   | ❌            |
+| POST   | `/users/login`      | User login                           | ❌            |
 
-### Container Diagram
-![Container Diagram](diagrams/Container%20Diagram.drawio.png)
+### User Management
+| Method | Endpoint            | Description                           | Auth Required |
+|--------|---------------------|---------------------------------------|---------------|
+| GET    | `/users/{userId}`   | Get user profile                     | ✅            |
+| PUT    | `/users/{userId}`   | Update user profile (includes FCM token) | ✅        |
+| DELETE | `/users/{userId}`   | Delete user account                  | ✅            |
 
-### Deployment Diagram
-![Deployment Diagram](diagrams/Deployment%20Diagram.drawio.png)
+### Earthquake Data
+| Method | Endpoint                  | Description                         | Auth Required |
+|--------|---------------------------|-------------------------------------|---------------|
+| GET    | `/earthquakes`            | List all earthquakes               | ✅            |
+| POST   | `/earthquakes`            | Create new earthquake record       | ✅            |
+| GET    | `/earthquakes/{earthquakeId}` | Get specific earthquake        | ✅            |
+| GET    | `/earthquakes/location`   | Get earthquakes by location        | ✅            |
 
-### Component Diagrams
-![Component Diagrams](diagrams/edm2.drawio.png)
+### Reports Management
+| Method | Endpoint                     | Description                         | Auth Required |
+|--------|------------------------------|-------------------------------------|---------------|
+| GET    | `/reports`                   | List all user-submitted reports     | ✅            |
+| POST   | `/reports`                   | Submit a new report                 | ✅            |
+| GET    | `/reports/{reportId}`        | Get specific report details         | ✅            |
+| PUT    | `/reports/{reportId}`        | Update report                       | ✅            |
+| DELETE | `/reports/{reportId}`        | Delete report                       | ✅            |
+| PUT    | `/reports/{reportId}/status` | Update report status                | ✅            |
+| PUT    | `/reports/{reportId}/location` | Update report location            | ✅            |
+| GET    | `/users/{userId}/reports`    | Get reports by specific user        | ✅            |
+| GET    | `/reports/category/{category}` | Get reports by category           | ✅            |
+| GET    | `/reports/status/{status}`   | Get reports by status               | ✅            |
 
-### Data Model Essentials
-![Data Model Essentials - 1](diagrams/DATA%20MODEL%201.drawio.png)
+### Landmarks Management
+| Method | Endpoint                | Description                           | Auth Required |
+|--------|-------------------------|---------------------------------------|---------------|
+| GET    | `/landmarks`            | List all landmarks                    | ✅            |
+| POST   | `/landmarks`            | Create new landmark (triggers notifications) | ✅    |
+| GET    | `/landmarks/{landmarkId}` | Get specific landmark details       | ✅            |
+| PUT    | `/landmarks/{landmarkId}` | Update landmark                     | ✅            |
+| DELETE | `/landmarks/{landmarkId}` | Delete landmark                     | ✅            |
 
-### Twitter Pipeline Components
-![Twitter Pipeline Components](diagrams/Twitter%20Pipeline%20Components.drawio.png)
+### 🔐 Authentication Notes
+- **Auth Required (✅)**: Endpoints require AWS Cognito JWT token in Authorization header
+- **No Auth (❌)**: Public endpoints for registration and login
+- **Base URL**: `https://{api-gateway-id}.execute-api.eu-north-1.amazonaws.com/Prod/`
 
-### Kandilli Engine Components
-![Kandilli Engine Components](diagrams/Kandilli%20Engine%20Components.drawio.png)
+### 📱 Special Features
+- **FCM Integration**: PUT `/users/{userId}` supports updating Firebase device tokens for push notifications
+- **Location-Based**: Landmarks creation automatically triggers notifications to nearby users
+- **Real-time Updates**: Earthquake and report data updates are streamed through DynamoDB
+- **Geospatial Queries**: Location-based filtering for earthquakes and landmarks
 
-### Sequence Diagrams
-![Sequence Diagram - 1](diagrams/Twitter%20-_%20GPT%20features.drawio.png)
-![Sequence Diagram - 2](diagrams/Kandilli%20-_%20Twitter%20Query%20Flow.drawio%20(4).png)
-![Sequence Diagram - 3](diagrams/Emergency%20Report%20Flow.drawio.png)
-
-
-## 🗺️ Legend  
-*(from UEP Final Design Document)*  
-
----
-
-### **Technology Stack**
-
-- **Backend:** Java 21 (AWS Lambda) — *4 services:* User, Report, Earthquake, Landmark  
-- **AI/ML:** Python 3.9+ (AWS Lambda) — *2 services:* Kandilli Engine, Twitter Pipeline  
-- **Database:** AWS DynamoDB (7 tables, pay-per-request model)  
-- **Storage:** AWS S3 (geospatial data)  
-- **Auth:** AWS Cognito (JWT tokens)
-
----
-
-### **Key Features**
-
-- **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
-- **TTL:** Automatic deletion for old data:  
-  - Earthquakes: *30 minutes – 7 days* (based on S-value)  
-  - Tweets: *10 years*  
-- **Scheduled Tasks:**  
-  - Kandilli Engine runs every **5 minutes**  
-  - Twitter Pipeline runs every **15 minutes**  
-- **Security:** Cognito Authorizer + IAM Least Privilege Access  
-- **Region:** `us-east-1` *(modifiable to your local AWS region)*  
-
----
-
-### **External APIs**
-
-| **API / Service** | **Purpose** | **Integration Type** |
-|--------------------|--------------|----------------------|
-| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
-| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
-| OpenAI GPT-4o mini | Text classification | REST / HTTPS |
-| Google Maps API | Geocoding and visualization | REST / HTTPS |
+> 🔐 JWT or Firebase token required for protected endpoints
 
 ---
 
@@ -702,7 +639,7 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 **Decision:** Process tweets in **two stages** instead of purely real-time.  
 
 **Stage 1 (Real-time, < 1 s):** Clean + TF-IDF → Immediately searchable  
-**Stage 2 (Batch, ≈ 15 min):** GPT-4 → Structured feature extraction  
+**Stage 2 (Batch, ≈ 4 min):** GPT-4 → Structured feature extraction  
 
 **Why:**  
 - Emergency coordinators require **instant keyword visibility**.  
@@ -711,7 +648,7 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 
 **Result:**  
 - Tweets visible in **< 1 minute** for search.  
-- Full semantic intelligence within **~15 minutes**.  
+- Full semantic intelligence within **~10 minutes**.  
 
 ---
 
@@ -750,9 +687,7 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 
 ---
 
-## Technology Stack – Quick Reference
-
----
+## ⚙️ Technology Stack
 
 ### **Frontend**
 | Component | Technology | Purpose |
@@ -778,10 +713,10 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 
 ---
 
-### **AI/ML Intelligence**
+### **AI Intelligence**
 | Component | Technology | Purpose |
 |------------|-------------|----------|
-| Runtime | AWS Lambda (Python 3.9+) | Serverless compute |
+| Runtime | AWS Lambda (Python 3.11) | Serverless compute |
 | Web Scraping | BeautifulSoup | Kandilli data extraction |
 | X API | X API v2 | Tweet collection |
 | Turkish NLP | Zemberek (via JPype) | Normalization / Lemmatization |
@@ -836,6 +771,36 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 | Gradle | Android build |
 | Git | Version control |
 | Postman | API testing |
+
+---
+
+### **External APIs**
+
+| **API / Service** | **Purpose** | **Integration Type** |
+|--------------------|--------------|----------------------|
+| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
+| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
+| OpenAI GPT-4o mini | Text classification | REST / HTTPS |
+| Google Maps API | Geocoding and visualization | REST / HTTPS |
+
+---
+
+### **Key Features**
+
+- **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
+- **TTL:** Automatic deletion for old data:  
+  - Earthquakes: *30 minutes – 7 days* (based on S-value)  
+  - Tweets: *10 years*  
+- **Scheduled Tasks:**  
+  - Kandilli Engine runs every **10 minutes**  
+  - Twitter Pipeline runs every **10 minutes**  
+- **Security:** Cognito Authorizer + IAM Least Privilege Access  
+- **Region:** `us-east-1` *(modifiable to your local AWS region)*  
+
+---
+
+## 🗺️ Legend  
+*(from UEP Final Design Document)*  
 
 ---
 
