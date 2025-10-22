@@ -11,7 +11,7 @@
 - [⚙️ Technology Stack – Quick Reference](#-technology-stack--quick-reference)
     - [Frontend](#frontend)
     - [Backend (Microservices)](#backend-microservices)
-    - [AI Intelligence](#aiml-intelligence)
+    - [AI Intelligence](#ai-intelligence)
     - [Data Storage](#data-storage)
     - [Infrastructure](#infrastructure)
     - [External Services](#external-services)
