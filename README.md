@@ -8,7 +8,7 @@
 - [🎯 Features](#-features)
 - [🏗️ Design Documents (C4 Model)](#-design-documents-c4-model)
 - [📊 ML Performance Metrics](#-ml-performance-metrics)
-- [⚙️ Technology Stack – Quick Reference](#-technology-stack--quick-reference)
+- [⚙️ Technology Stack](#-technology-stack)
     - [Frontend](#frontend)
     - [Backend (Microservices)](#backend-microservices)
     - [AI Intelligence](#ai-intelligence)
