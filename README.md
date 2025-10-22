@@ -187,7 +187,7 @@ SeismIQ/
 │   │   └── build.gradle     # App build configuration
 │   ├── gradle/              # Gradle wrapper
 │   └── build.gradle         # Project build configuration
-├── twitter/                  # AI/ML Tweet Analysis Pipeline
+├── twitter/                  # AI/NLP Tweet Analysis Pipeline
 │   ├── Aug10_scraper.py     # Twitter data scraping
 │   ├── Aug10_tweet_analysis.ipynb # Data analysis notebooks
 │   ├── Feb6_tweet_analysis.ipynb
@@ -469,7 +469,7 @@ UI Updates:
 
 ## Background Intelligence Flow
 
-### Step 8: AI/ML Integration Workflow
+### Step 8: AI Integration Workflow
 ```
 Twitter/Social Media Monitoring
     ↓
