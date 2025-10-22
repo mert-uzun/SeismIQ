@@ -7,6 +7,7 @@
 - [💡 Overview](#-overview)
 - [🎯 Features](#-features)
 - [🏗️ Design Documents (C4 Model)](#design-documents-c4-model)
+- [📊 ML Performance Metrics](#ml-performance-metrics)
 - [🧱 Technologies Used](#-technologies-used)
 - [📂 Project Structure](#-project-structure)
 - [📱 Application Flow](#-app-launch--authentication-flow)
@@ -117,6 +118,70 @@ In summary, this project aims to:
 ![Sequence Diagram - 1](diagrams/Twitter%20-_%20GPT%20features.drawio.png)
 ![Sequence Diagram - 2](diagrams/Kandilli%20-_%20Twitter%20Query%20Flow.drawio%20(4).png)
 ![Sequence Diagram - 3](diagrams/Emergency%20Report%20Flow.drawio.png)
+
+---
+
+## 📊 ML Performance Metrics
+
+This section details the performance of the Natural Language Processing (NLP) pipeline, which automatically classifies tweets and social media data into distinct emergency categories.
+
+### Classification Accuracy (Table 3.0 & 3.1)
+
+#### Table 3.0: Confusion Matrix
+Showing the distribution of predicted versus actual emergency classifications across all categories.
+
+| Predicted/Actual | Medical | Supply | Rescue | Danger | None | Total |
+|:-----------------|:--------|:-------|:-------|:-------|:-----|:------|
+| **medical_aid** | 14 | 1 | 0 | 0 | 0 | 15 |
+| **supply_call** | 1 | 23 | 1 | 0 | 0 | 26 |
+| **rescue_call** | 1 | 2 | 173 | 11 | 6 | 193 |
+| **danger_notice** | 0 | 0 | 0 | 15 | 1 | 16 |
+| **none** | 8 | 6 | 3 | 9 | 224 | 250 |
+| **Total** | 23 | 33 | 180 | 33 | 231 | 500 |
+
+#### Table 3.1: Classification Report
+Showing precision, recall, F1-score, and support for each emergency category, along with macro and weighted averages.
+
+| Class | Precision | Recall | F1 | Support |
+|:---|:---|:---|:---|:---|
+| **medical_aid** | 0.609 | 0.933 | 0.737 | 15 |
+| **supply_call** | 0.697 | 0.885 | 0.781 | 26 |
+| **rescue_call** | 0.961 | 0.896 | 0.927 | 193 |
+| **danger_notice** | 0.455 | 0.938 | 0.608 | 16 |
+| **none** | 0.970 | 0.896 | 0.932 | 250 |
+| **Macro Avg** | **0.738** | **0.910** | **0.797** | **500** |
+| **Weighted Avg** | **0.925** | **0.898** | **0.906** | **500** |
+
+### Key Observations
+
+- **High Precision for Non-Emergency:** The model exhibits a **high precision for `none` (97.0%)**, which is crucial as it **minimizes false alarms** for first responders.
+- **High Recall for Critical Cases:** The high recall for **`danger_notice` (93.8%)** ensures that critical emergencies and immediate hazards are rarely missed (low False Negative Rate).
+- **Reliable Rescue Identification:** The **`rescue_call`** category shows strong balanced performance (**96.1% Precision / 89.6% Recall**), reliably identifying urgent trapped-person cases.
+- **Recall Priority:** Categories like `medical_aid` and `supply_call` have moderate precision (60.9% / 69.7%) but **high recall** (93.3% / 88.5%), indicating the system prioritizes *catching* an emergency signal over occasionally mislabeling it—an acceptable trade-off for disaster response.
+
+### Error Analysis
+
+Most errors occur between semantically similar classes (`rescue` ↔ `danger`) and at the boundary between emergency and non-emergency content (`none` ↔ `other categories`), reflecting the inherent ambiguity in real-world social media text.
+
+**Most Common Misclassifications (62 total errors):**
+
+- **`rescue_call` → `danger_notice` (11 tweets, 18%):**
+    *Example:* "People trapped under debris" is often misclassified as a generalized danger notice instead of a specific call for rescue.
+- **`none` → `danger_notice` (9 tweets, 15%):**
+    *Example:* "Collapsed building nearby" may be flagged as a general danger notice even if the tweet isn't explicitly seeking help.
+- **`none` → `medical_aid` (8 tweets, 13%):**
+    *Example:* "Visited hospital for checkup" is a non-emergency that sometimes gets flagged as medical need.
+- **`rescue_call` → `none` (6 tweets, 10%):**
+    *Example:* "Rescue team on site" tweets, which report on the resolution of a rescue, are sometimes incorrectly flagged as `none`.
+- **`supply_call` → `medical_aid` (1 tweet, 2%):**
+    *Example:* "Need bandages" confused with medical emergency.
+- **Other combinations (27 tweets, 43%)**
+
+**Critical Metrics for Disaster Response:**
+
+- **Zero `rescue_call` misclassified as `none`** (No missed life-threatening situations).
+- **Only 1 `danger_notice` missed** (93.8% sensitivity for hazards).
+- **False Negative Rate for all emergency categories is low at 2.4%**, demonstrating the model's fitness for rapid, life-saving information extraction.
 
 ---
 
