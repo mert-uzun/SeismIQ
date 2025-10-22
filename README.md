@@ -2,6 +2,54 @@
 
 ![SeismIQ Logo](Seisimiq_app_logo.png)
 
+## 🧭 Table of Contents
+
+- [💡 Overview](#-overview)
+- [🎯 Features](#-features)
+- [🏗️ Design Documents (C4 Model)](#design-documents-c4-model)
+- [🧱 Technologies Used](#-technologies-used)
+- [📂 Project Structure](#-project-structure)
+- [🚀 Getting Started](#-getting-started)
+    - [Zemberek NLP Setup](#zemberek-nlp)
+- [📱 App Launch & Authentication Flow](#-app-launch--authentication-flow)
+    - [Step 1: Application Entry](#-step-1-application-entry)
+    - [Step 2: Main Interface (MainActivity)](#-step-2-main-interface-mainactivity)
+    - [Step 3: Interactive Map Experience](#-step-3-map-visualization-flow)
+    - [Step 4: Emergency Reporting Workflow](#-step-4-report-submission-flow)
+    - [Step 5: Landmark Management System](#-step-5-landmark-creation-flow)
+    - [Step 6: Push Notification Flow](#-step-6-push-notification-flow)
+    - [Step 7: Real-time Data Management](#step-7-real-time-data-management)
+    - [Step 8: AI/ML Integration Workflow](#step-8-aiml-integration-workflow)
+    - [Step 9: Session & Security Flow](#-step-9-session--security-flow)
+- [🌐 API Endpoints](#-api-endpoints)
+    - [Authentication](#authentication)
+    - [User Management](#user-management)
+    - [Earthquake Data](#earthquake-data)
+    - [Reports Management](#reports-management)
+    - [Landmarks Management](#landmarks-management)
+    - [Authentication Notes](#authentication-notes)
+    - [Special Features](#-special-features)
+- [🧩 Architectural Decision Records (ADRs)](#-architectural-decision-records-adrs)
+    - [ADR-1: Serverless Architecture (AWS Lambda)](#adr-1-serverless-architecture-aws-lambda)
+    - [ADR-2: Kandilli Seismological Engine (S-value)](#adr-2-kandilli-seismological-engine-s-value-calculation)
+    - [ADR-3: Two-Stage Tweet Processing](#adr-3-two-stage-tweet-processing-real-time--batch)
+    - [ADR-4: DynamoDB with TTL](#adr-4-dynamodb-with-ttl)
+    - [ADR-5: Turkish NLP Pipeline](#adr-5-turkish-nlp-pipeline-zemberek--spacy--gpt-4o-mini)
+- [⚙️ Technology Stack – Quick Reference](#technology-stack--quick-reference)
+    - [Frontend](#frontend)
+    - [Backend (Microservices)](#backend-microservices)
+    - [AI/ML Intelligence](#aiml-intelligence)
+    - [Data Storage](#data-storage)
+    - [Infrastructure](#infrastructure)
+    - [External Services](#external-services)
+    - [Development Tools](#development-tools)
+- [🗺️ Legend](#-legend)
+    - [Technology Stack](#technology-stack)
+    - [Key Features](#key-features)
+    - [External APIs](#external-apis)
+- [📜 License](#-license)
+- [❤️ Acknowledgments](#-acknowledgments)
+
 ## 🧭 Overview
 
 Natural disasters like earthquakes can strike without warning, leaving cities and communities in urgent need of coordination, communication, and resource distribution. In such chaotic environments, time is critical. Rescue operations, humanitarian aid, and survivor outreach efforts must be fast, efficient, and based on accurate, real-time information. Unfortunately, traditional communication infrastructures often collapse or become overloaded, creating serious gaps in coordination.
@@ -542,7 +590,7 @@ Session End:
 
 ---
 
-## Design Documents
+## Design Documents (C4 Model)
 
 ### System Context Diagram
 ![System Context Diagram](diagrams/System%20Context%20Diagram.drawio.png)
