@@ -6,9 +6,9 @@
 
 - [💡 Overview](#-overview)
 - [🎯 Features](#-features)
-- [🏗️ Design Documents (C4 Model)](#-design-documents-c4-model)
+- [🏗️ Design Documents (C4 Model)](#design-documents-c4-model)
 - [📊 ML Performance Metrics](#-ml-performance-metrics)
-- [⚙️ Technology Stack](#-technology-stack)
+- [⚙️ Technology Stack](#technology-stack)
     - [Frontend](#frontend)
     - [Backend (Microservices)](#backend-microservices)
     - [AI Intelligence](#ai-intelligence)
@@ -43,7 +43,7 @@
     - [ADR-4: DynamoDB with TTL](#adr-4-dynamodb-with-ttl)
     - [ADR-5: Turkish NLP Pipeline](#adr-5-turkish-nlp-pipeline-zemberek--spacy--gpt-4o-mini)
 - [📜 License](#-license)
-- [❤️ Acknowledgments](#-acknowledgments)
+- [❤️ Acknowledgments](#acknowledgments)
 
 ## 💡 Overview
 
