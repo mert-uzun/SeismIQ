@@ -41,10 +41,7 @@
     - [Infrastructure](#infrastructure)
     - [External Services](#external-services)
     - [Development Tools](#development-tools)
-- [🗺️ Legend](#-legend)
-    - [Technology Stack](#technology-stack)
     - [Key Features](#key-features)
-    - [External APIs](#external-apis)
 - [📜 License](#-license)
 - [❤️ Acknowledgments](#-acknowledgments)
 
@@ -757,7 +754,7 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 | Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
 | X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
 | OpenAI GPT-4o API | Text classification | REST / HTTPS |
-| Google Maps API | Map rendering, geocoding | REST / HTTPS |
+| Google Maps API | Map rendering, geocoding, visualization | REST / HTTPS |
 
 ---
 
@@ -774,17 +771,6 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 
 ---
 
-### **External APIs**
-
-| **API / Service** | **Purpose** | **Integration Type** |
-|--------------------|--------------|----------------------|
-| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
-| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
-| OpenAI GPT-4o mini | Text classification | REST / HTTPS |
-| Google Maps API | Geocoding and visualization | REST / HTTPS |
-
----
-
 ### **Key Features**
 
 - **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
@@ -796,11 +782,6 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
   - Twitter Pipeline runs every **10 minutes**  
 - **Security:** Cognito Authorizer + IAM Least Privilege Access  
 - **Region:** `us-east-1` *(modifiable to your local AWS region)*  
-
----
-
-## 🗺️ Legend  
-*(from UEP Final Design Document)*  
 
 ---
 
