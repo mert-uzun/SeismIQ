@@ -20,7 +20,7 @@
 - [📂 Project Structure](#-project-structure)
 - [📱 Application Flow](#-app-launch--authentication-flow)
     - [Step 1: Application Entry](#-step-1-application-entry)
-    - [Step 2: Main Interface (MainActivity)](#-step-2-main-interface-mainactivity)
+    - [Step 2: Main Interface](#-step-2-main-interface)
     - [Step 3: Interactive Map Experience](#-step-3-map-visualization-flow)
     - [Step 4: Emergency Reporting Workflow](#-step-4-report-submission-flow)
     - [Step 5: Landmark Management System](#-step-5-landmark-creation-flow)
@@ -395,7 +395,7 @@ AWS Cognito Registration
 
 ## 🏠 Main Application Flow
 
-### 🎯 Step 2: Main Interface (MainActivity)
+### 🎯 Step 2: Main Interface
 ```
 Successful Login
     ↓
