@@ -83,7 +83,7 @@ In summary, this project aims to:
 ## **🎯 Features**
 
 - 📍 Location-based help/resource reporting
-- 🧠 Tweet analysis for detecting emergency requests (via NLP)
+- 🧠 Tweet analysis and seismiq monitoring for detecting emergency requests (via NLP)
 - 🔔 Push notifications for critical alerts
 - 🗺️ Resource visualization: cranes, food spots, shelters, etc.
 - 🧩 Modular backend using AWS Lambda & API Gateway
