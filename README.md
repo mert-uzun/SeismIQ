@@ -6,9 +6,17 @@
 
 - [💡 Overview](#-overview)
 - [🎯 Features](#-features)
-- [🏗️ Design Documents (C4 Model)](#design-documents-c4-model)
-- [📊 ML Performance Metrics](#ml-performance-metrics)
-- [🧱 Technologies Used](#-technologies-used)
+- [🏗️ Design Documents (C4 Model)](#-design-documents-c4-model)
+- [📊 ML Performance Metrics](#-ml-performance-metrics)
+- [⚙️ Technology Stack – Quick Reference](#-technology-stack--quick-reference)
+    - [Frontend](#frontend)
+    - [Backend (Microservices)](#backend-microservices)
+    - [AI Intelligence](#aiml-intelligence)
+    - [Data Storage](#data-storage)
+    - [Infrastructure](#infrastructure)
+    - [External Services](#external-services)
+    - [Development Tools](#development-tools)
+    - [Key Features](#key-features)
 - [📂 Project Structure](#-project-structure)
 - [📱 Application Flow](#-app-launch--authentication-flow)
     - [Step 1: Application Entry](#-step-1-application-entry)
@@ -18,7 +26,7 @@
     - [Step 5: Landmark Management System](#-step-5-landmark-creation-flow)
     - [Step 6: Push Notification Flow](#-step-6-push-notification-flow)
     - [Step 7: Real-time Data Management](#step-7-real-time-data-management)
-    - [Step 8: AI Integration Workflow](#step-8-aiml-integration-workflow)
+    - [Step 8: AI Integration Workflow](#step-8-ai-integration-workflow)
     - [Step 9: Session & Security Flow](#-step-9-session--security-flow)
 - [🌐 API Endpoints](#-api-endpoints)
     - [Authentication](#authentication)
@@ -26,7 +34,7 @@
     - [Earthquake Data](#earthquake-data)
     - [Reports Management](#reports-management)
     - [Landmarks Management](#landmarks-management)
-    - [Authentication Notes](#authentication-notes)
+    - [Authentication Notes](#-authentication-notes)
     - [Special Features](#-special-features)
 - [🧩 Architectural Decision Records (ADRs)](#-architectural-decision-records-adrs)
     - [ADR-1: Serverless Architecture (AWS Lambda)](#adr-1-serverless-architecture-aws-lambda)
@@ -34,15 +42,6 @@
     - [ADR-3: Two-Stage Tweet Processing](#adr-3-two-stage-tweet-processing-real-time--batch)
     - [ADR-4: DynamoDB with TTL](#adr-4-dynamodb-with-ttl)
     - [ADR-5: Turkish NLP Pipeline](#adr-5-turkish-nlp-pipeline-zemberek--spacy--gpt-4o-mini)
-- [⚙️ Technology Stack – Quick Reference](#technology-stack--quick-reference)
-    - [Frontend](#frontend)
-    - [Backend (Microservices)](#backend-microservices)
-    - [AI Intelligence](#aiml-intelligence)
-    - [Data Storage](#data-storage)
-    - [Infrastructure](#infrastructure)
-    - [External Services](#external-services)
-    - [Development Tools](#development-tools)
-    - [Key Features](#key-features)
 - [📜 License](#-license)
 - [❤️ Acknowledgments](#-acknowledgments)
 
@@ -185,24 +184,104 @@ Most errors occur between semantically similar classes (`rescue` ↔ `danger`) a
 
 ---
 
-## **🧱 Technologies Used**
+## ⚙️ Technology Stack
 
-### Backend
-- **AWS Lambda** – Serverless event-driven backend
-- **Amazon API Gateway** – RESTful endpoints
-- **Amazon DynamoDB / RDS** – Storing reports and tweet data
-- **Amazon S3** – Storing static assets or logs
-- **AWS SNS / SQS** – Notifications and async queueing
+### **Frontend**
+| Component | Technology | Purpose |
+|------------|-------------|----------|
+| Platform | Android SDK 30+ | Mobile app |
+| Language | Java 11 | Native development |
+| UI Framework | Material Design, AndroidX | User interface |
+| Maps | Google Maps SDK | Location visualization |
+| HTTP Client | Retrofit 2.9 | API calls |
+| JSON | Gson | Serialization |
+| Auth | JWT in SharedPreferences | Token storage |
 
-### Machine Learning
-- **Text Classification Models** – Classify tweets and reports into categories
-- **Anomaly Detection** – Identify unusual spikes in certain areas
-- **Clustering & Geo-spatial Analysis** – Determine crowded zones
+---
 
-### Frontend
-- **Android Studio (Java)** – Native app with report submission, map, etc.
-- **Google Maps SDK** – Map rendering & real-time markers
-- **Firebase** – Authentication & push notification services
+### **Backend (Microservices)**
+| Component | Technology | Purpose |
+|------------|-------------|----------|
+| Runtime | AWS Lambda (Java 21) | Serverless compute |
+| Build Tool | Maven 3.9 | Dependency management |
+| Framework | AWS Lambda Java Events | Request handling |
+| JSON | Gson 2.10 | Serialization |
+| Database Access | AWS SDK for DynamoDB | Data operations |
+
+---
+
+### **AI Intelligence**
+| Component | Technology | Purpose |
+|------------|-------------|----------|
+| Runtime | AWS Lambda (Python 3.11) | Serverless compute |
+| Web Scraping | BeautifulSoup | Kandilli data extraction |
+| X API | X API v2 | Tweet collection |
+| Turkish NLP | Zemberek (via JPype) | Normalization / Lemmatization |
+| Tokenization | SpaCy | NER, tokenization |
+| Feature Extraction | Scikit-learn 1.3 (TF-IDF) | Keyword extraction |
+| LLM | OpenAI GPT-4o mini | Emergency classification |
+| Geospatial | GeoPandas, Shapely | Spatial analysis |
+| ML | Scikit-learn (BallTree) | Nearest neighbor queries |
+
+---
+
+### **Data Storage**
+| Component | Technology | Purpose |
+|------------|-------------|----------|
+| Database | AWS DynamoDB | NoSQL data store |
+| Tables | 7 tables | Users, Reports, Landmarks, Earthquakes, Tweets, etc. |
+| Billing | Pay-per-request | Auto-scaling |
+| TTL | Native DynamoDB TTL | Auto-delete old data |
+| Geospatial Data | AWS S3 | Cities5000.parquet, land.geojson, GMPE coefficients |
+
+---
+
+### **Infrastructure**
+| Component | Technology | Purpose |
+|------------|-------------|----------|
+| API Gateway | AWS API Gateway (REST) | Route HTTP requests |
+| Authentication | AWS Cognito User Pool | User management, JWT |
+| Logging | AWS CloudWatch Logs | Lambda logs |
+| Monitoring | AWS CloudWatch Metrics | Performance tracking |
+| Scheduling | CloudWatch Events | Trigger Lambdas (10 min) |
+| IaC | AWS SAM (templates.yaml) | Infrastructure as Code |
+
+---
+
+### **External Services**
+| Service | Purpose | Protocol |
+|----------|----------|-----------|
+| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
+| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
+| OpenAI GPT-4o API | Text classification | REST / HTTPS |
+| Google Maps API | Map rendering, geocoding, visualization | REST / HTTPS |
+
+---
+
+### **Development Tools**
+| Tool | Purpose |
+|------|----------|
+| Android Studio | Mobile app development |
+| IntelliJ IDEA / VS Code | Backend development |
+| Jupyter Notebook | ML experimentation |
+| Maven | Java build |
+| Gradle | Android build |
+| Git | Version control |
+| Postman | API testing |
+
+---
+
+### **Key Features**
+
+- **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
+- **TTL:** Automatic deletion for old data:  
+  - Earthquakes: *30 minutes – 7 days* (based on S-value)  
+  - Tweets: *10 years*  
+- **Scheduled Tasks:**  
+  - Kandilli Engine runs every **10 minutes**  
+  - Twitter Pipeline runs every **10 minutes**  
+- **Security:** Cognito Authorizer + IAM Least Privilege Access  
+- **Region:** `us-east-1`
 
 ---
 
@@ -746,107 +825,6 @@ S = (M - β(M) * \log_{10}(R^* + 1)) * O
 **Result:**  
 - High linguistic accuracy for Turkish emergency-related text.  
 - Strong resilience against noise, slang, and informal phrasing.  
-
----
-
-## ⚙️ Technology Stack
-
-### **Frontend**
-| Component | Technology | Purpose |
-|------------|-------------|----------|
-| Platform | Android SDK 30+ | Mobile app |
-| Language | Java 11 | Native development |
-| UI Framework | Material Design, AndroidX | User interface |
-| Maps | Google Maps SDK | Location visualization |
-| HTTP Client | Retrofit 2.9 | API calls |
-| JSON | Gson | Serialization |
-| Auth | JWT in SharedPreferences | Token storage |
-
----
-
-### **Backend (Microservices)**
-| Component | Technology | Purpose |
-|------------|-------------|----------|
-| Runtime | AWS Lambda (Java 21) | Serverless compute |
-| Build Tool | Maven 3.9 | Dependency management |
-| Framework | AWS Lambda Java Events | Request handling |
-| JSON | Gson 2.10 | Serialization |
-| Database Access | AWS SDK for DynamoDB | Data operations |
-
----
-
-### **AI Intelligence**
-| Component | Technology | Purpose |
-|------------|-------------|----------|
-| Runtime | AWS Lambda (Python 3.11) | Serverless compute |
-| Web Scraping | BeautifulSoup | Kandilli data extraction |
-| X API | X API v2 | Tweet collection |
-| Turkish NLP | Zemberek (via JPype) | Normalization / Lemmatization |
-| Tokenization | SpaCy | NER, tokenization |
-| Feature Extraction | Scikit-learn 1.3 (TF-IDF) | Keyword extraction |
-| LLM | OpenAI GPT-4o mini | Emergency classification |
-| Geospatial | GeoPandas, Shapely | Spatial analysis |
-| ML | Scikit-learn (BallTree) | Nearest neighbor queries |
-
----
-
-### **Data Storage**
-| Component | Technology | Purpose |
-|------------|-------------|----------|
-| Database | AWS DynamoDB | NoSQL data store |
-| Tables | 7 tables | Users, Reports, Landmarks, Earthquakes, Tweets, etc. |
-| Billing | Pay-per-request | Auto-scaling |
-| TTL | Native DynamoDB TTL | Auto-delete old data |
-| Geospatial Data | AWS S3 | Cities5000.parquet, land.geojson, GMPE coefficients |
-
----
-
-### **Infrastructure**
-| Component | Technology | Purpose |
-|------------|-------------|----------|
-| API Gateway | AWS API Gateway (REST) | Route HTTP requests |
-| Authentication | AWS Cognito User Pool | User management, JWT |
-| Logging | AWS CloudWatch Logs | Lambda logs |
-| Monitoring | AWS CloudWatch Metrics | Performance tracking |
-| Scheduling | CloudWatch Events | Trigger Lambdas (10 min) |
-| IaC | AWS SAM (templates.yaml) | Infrastructure as Code |
-
----
-
-### **External Services**
-| Service | Purpose | Protocol |
-|----------|----------|-----------|
-| Kandilli Observatory | Real-time earthquake data | HTTP / Web scraping |
-| X (Twitter) API | Social media monitoring | OAuth 1.0 / REST |
-| OpenAI GPT-4o API | Text classification | REST / HTTPS |
-| Google Maps API | Map rendering, geocoding, visualization | REST / HTTPS |
-
----
-
-### **Development Tools**
-| Tool | Purpose |
-|------|----------|
-| Android Studio | Mobile app development |
-| IntelliJ IDEA / VS Code | Backend development |
-| Jupyter Notebook | ML experimentation |
-| Maven | Java build |
-| Gradle | Android build |
-| Git | Version control |
-| Postman | API testing |
-
----
-
-### **Key Features**
-
-- **Serverless:** All Lambda functions auto-scale dynamically (0 → 1000s).  
-- **TTL:** Automatic deletion for old data:  
-  - Earthquakes: *30 minutes – 7 days* (based on S-value)  
-  - Tweets: *10 years*  
-- **Scheduled Tasks:**  
-  - Kandilli Engine runs every **10 minutes**  
-  - Twitter Pipeline runs every **10 minutes**  
-- **Security:** Cognito Authorizer + IAM Least Privilege Access  
-- **Region:** `us-east-1` *(modifiable to your local AWS region)*  
 
 ---
 
