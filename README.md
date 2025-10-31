@@ -751,7 +751,7 @@ Session End:
 - No manual server management during emergencies.  
 
 **Trade-off:**  
-- Cold start latency (≈50–500 ms) vs always-on servers.  
+- Cold start latency (≈20 ms) vs always-on servers.  
 - Accepted because *millisecond-level latency is not critical for disaster response.*  
 
 ---
